@@ -18,11 +18,8 @@ struct ContentRow: View {
     @EnvironmentObject var theme: MoonfinTheme
     @EnvironmentObject var container: AppContainer
     @State private var v2FocusedItemId: String? = nil
-    @State private var v2BackdropItemId: String? = nil
-    @State private var v2BackdropSwitchTask: Task<Void, Never>? = nil
 
     private let v2ExtendedSectionHeight: CGFloat = 320
-    private let v2BackdropSwitchDelayNs: UInt64 = 90_000_000
 
     private var posterSize: PosterSize {
         container.userPreferences[UserPreferences.homePosterSize]
@@ -134,9 +131,7 @@ struct ContentRow: View {
         }
         .onChange(of: isRowFocused) { focused in
             if !focused {
-                v2BackdropSwitchTask?.cancel()
-                v2BackdropSwitchTask = nil
-                v2BackdropItemId = nil
+                v2FocusedItemId = nil
             }
         }
     }
@@ -247,15 +242,15 @@ struct ContentRow: View {
 
     private func v2CardView(for item: ServerItem) -> some View {
         let isFocused = isRowFocused && v2FocusedItemId == item.id
-        let isExpanded = isFocused && isFocusExpansionEnabled
+        let isExpanded = isFocused
         let targetCardWidth = isExpanded ? v2FocusedWidth : v2PortraitWidth
         let cardWidth = (targetCardWidth.isFinite && targetCardWidth > 1) ? targetCardWidth : max(1, v2PortraitWidth)
         let aspectRatio: CGFloat = isExpanded ? (16.0 / 9.0) : (2.0 / 3.0)
 
-        return VStack(alignment: .leading, spacing: SpaceTokens.spaceSm) {
+        return VStack(alignment: .leading, spacing: SpaceTokens.spaceXs) {
             ItemPreview(
                 item: item,
-                imageUrl: v2ImageUrl(for: item, isFocused: isFocused),
+                imageUrl: v2ImageUrl(for: item, isExpanded: isExpanded),
                 aspectRatio: aspectRatio,
                 cardWidth: cardWidth,
                 watchedIndicator: watchedIndicator,
@@ -270,19 +265,19 @@ struct ContentRow: View {
                 onFocusChange: { focused in
                     if focused {
                         v2FocusedItemId = item.id
-                        v2BackdropSwitchTask?.cancel()
-                        v2BackdropSwitchTask = Task {
-                            try? await Task.sleep(nanoseconds: v2BackdropSwitchDelayNs)
-                            guard !Task.isCancelled else { return }
-                            if v2FocusedItemId == item.id {
-                                v2BackdropItemId = item.id
-                            }
-                        }
+                    } else if v2FocusedItemId == item.id {
+                        v2FocusedItemId = nil
                     }
                 },
                 onSelect: { onItemSelected?(item) },
                 onToggleWatched: onToggleWatched.map { cb in { cb(item) } },
                 onToggleFavorite: onToggleFavorite.map { cb in { cb(item) } }
+            )
+
+            HomeRowV2CardLabels(
+                item: item,
+                isFocused: isFocused,
+                width: cardWidth
             )
 
             HomeRowV2ExtendedSection(
@@ -294,11 +289,11 @@ struct ContentRow: View {
             )
         }
         .frame(width: cardWidth, alignment: .leading)
-        .animation(isFocusExpansionEnabled ? v2FocusAnimation : nil, value: isFocused)
+        .animation(v2FocusAnimation, value: isFocused)
     }
 
-    private func v2ImageUrl(for item: ServerItem, isFocused: Bool) -> String? {
-        if isFocused, v2BackdropItemId == item.id {
+    private func v2ImageUrl(for item: ServerItem, isExpanded: Bool) -> String? {
+        if isExpanded {
             return viewModel.thumbImageUrl(for: item) ?? viewModel.posterImageUrl(for: item)
         }
         return viewModel.posterImageUrl(for: item)
@@ -326,6 +321,165 @@ struct ContentRow: View {
         default:
             return false
         }
+    }
+}
+
+private struct HomeRowV2CardLabels: View {
+    let item: ServerItem
+    let isFocused: Bool
+    let width: CGFloat
+
+    @EnvironmentObject var theme: MoonfinTheme
+
+    private var safeWidth: CGFloat {
+        if width.isFinite, width > 1 {
+            return width
+        }
+        return 1
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            MarqueeText(
+                text: titleText,
+                font: .captionXs,
+                fontSize: TypographyTokens.fontSizeXs,
+                color: theme.colorScheme.listHeadline,
+                maxWidth: safeWidth,
+                isFocused: isFocused
+            )
+
+            if isEpisode, isFocused {
+                if let row2Text {
+                    MarqueeText(
+                        text: row2Text,
+                        font: .captionXs,
+                        fontSize: TypographyTokens.fontSizeXs,
+                        color: theme.colorScheme.listCaption,
+                        maxWidth: safeWidth,
+                        isFocused: isFocused
+                    )
+                }
+                if let row3Text {
+                    MarqueeText(
+                        text: row3Text,
+                        font: .captionXs,
+                        fontSize: TypographyTokens.fontSizeXs,
+                        color: theme.colorScheme.listCaption,
+                        maxWidth: safeWidth,
+                        isFocused: isFocused
+                    )
+                }
+            } else if let subtitleText {
+                MarqueeText(
+                    text: subtitleText,
+                    font: .captionXs,
+                    fontSize: TypographyTokens.fontSizeXs,
+                    color: theme.colorScheme.listCaption,
+                    maxWidth: safeWidth,
+                    isFocused: isFocused
+                )
+            }
+        }
+        .frame(width: safeWidth, alignment: .leading)
+    }
+
+    private var isEpisode: Bool {
+        item.type == .episode
+    }
+
+    private var titleText: String {
+        if isEpisode {
+            return normalizedSeriesName ?? item.name
+        }
+        return item.name
+    }
+
+    private var subtitleText: String? {
+        if isEpisode {
+            return episodeMarkerText ?? item.name
+        }
+        if isFocused {
+            return v2MetadataLine
+        }
+        return compactSubtitleText
+    }
+
+    private var row2Text: String? {
+        if let marker = episodeMarkerText, !item.name.isEmpty {
+            return "\(marker) - \(item.name)"
+        }
+        return item.name.isEmpty ? nil : item.name
+    }
+
+    private var row3Text: String? {
+        v2MetadataLine
+    }
+
+    private var compactSubtitleText: String? {
+        var parts: [String] = []
+
+        if let year = yearText {
+            parts.append(year)
+        }
+
+        if let resolution = ResolutionHelper.resolutionName(for: item), !resolution.isEmpty {
+            parts.append(resolution)
+        }
+
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " • ")
+    }
+
+    private var v2MetadataLine: String? {
+        var parts: [String] = []
+
+        if let year = yearText {
+            parts.append(year)
+        }
+
+        if let genres = item.genres, !genres.isEmpty {
+            let genreText = genres.prefix(2).joined(separator: " • ")
+            if !genreText.isEmpty {
+                parts.append(genreText)
+            }
+        }
+
+        if let runtime = runtimeText {
+            parts.append(runtime)
+        }
+
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " • ")
+    }
+
+    private var episodeMarkerText: String? {
+        guard let season = item.parentIndexNumber, let episode = item.indexNumber else {
+            return nil
+        }
+        return "S\(season):E\(episode)"
+    }
+
+    private var normalizedSeriesName: String? {
+        guard let value = item.seriesName?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return nil
+        }
+        return value
+    }
+
+    private var yearText: String? {
+        if let year = item.productionYear, year > 0 {
+            return String(year)
+        }
+        if let date = item.premiereDate {
+            return String(Calendar.current.component(.year, from: date))
+        }
+        return nil
+    }
+
+    private var runtimeText: String? {
+        guard let ticks = item.runTimeTicks, ticks > 0 else { return nil }
+        return RuntimeFormatter.format(ticks: ticks)
     }
 }
 
@@ -358,13 +512,6 @@ private struct HomeRowV2ExtendedSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: SpaceTokens.spaceXs) {
-            if let metadataText {
-                Text(metadataText)
-                    .font(.captionSm)
-                    .foregroundColor(theme.colorScheme.onBackground.opacity(0.75))
-                    .lineLimit(1)
-            }
-
             if let officialRatingText {
                 HStack(spacing: SpaceTokens.spaceXs) {
                     Text(officialRatingText)
@@ -399,40 +546,6 @@ private struct HomeRowV2ExtendedSection: View {
         .frame(width: safeWidth, height: safeHeight, alignment: .topLeading)
         .opacity(isVisible ? 1 : 0)
         .allowsHitTesting(false)
-    }
-
-    private var metadataText: String? {
-        var parts: [String] = []
-
-        if let yearText {
-            parts.append(yearText)
-        }
-
-        if let firstGenre = item.genres?.first, !firstGenre.isEmpty {
-            parts.append(firstGenre)
-        }
-
-        if let runtimeText {
-            parts.append(runtimeText)
-        }
-
-        guard !parts.isEmpty else { return nil }
-        return parts.joined(separator: " • ")
-    }
-
-    private var yearText: String? {
-        if let year = item.productionYear, year > 0 {
-            return String(year)
-        }
-        if let date = item.premiereDate {
-            return String(Calendar.current.component(.year, from: date))
-        }
-        return nil
-    }
-
-    private var runtimeText: String? {
-        guard let ticks = item.runTimeTicks, ticks > 0 else { return nil }
-        return RuntimeFormatter.format(ticks: ticks)
     }
 
     private var officialRatingText: String? {
