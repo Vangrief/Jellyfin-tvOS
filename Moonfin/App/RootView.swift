@@ -263,15 +263,15 @@ struct MainNavigationView: View {
                 .zIndex(2)
             }
 
-            if let adminMessage {
+            if let adminMessagePayload = adminMessage {
                 theme.colorScheme.scrim
                     .ignoresSafeArea()
                     .transition(.opacity)
                     .zIndex(3)
 
                 AdminMessageDialog(
-                    title: adminMessage.title,
-                    message: adminMessage.message,
+                    title: adminMessagePayload.title,
+                    message: adminMessagePayload.message,
                     onDismiss: { adminMessage = nil }
                 )
                 .zIndex(4)

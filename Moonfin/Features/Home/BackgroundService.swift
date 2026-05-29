@@ -29,7 +29,7 @@ final class BackgroundService: ObservableObject {
     }
 
     func setBackground(urls: [String], context: BlurContext = .browsing) {
-        let isBackdropEnabled = preferences?[UserPreferences.backdropEnabled] ?? true
+        let isBackdropEnabled = boolPreferenceSnapshot(UserPreferences.backdropEnabled)
         if !isBackdropEnabled {
             clearBackground()
             return
@@ -84,18 +84,28 @@ final class BackgroundService: ObservableObject {
     }
 
     private func resolvedBlurAmount(for context: BlurContext) -> CGFloat {
-        guard let prefs = preferences else {
-            switch context {
-            case .details: return 20
-            case .browsing: return 20
-            case .none: return 0
-            }
-        }
         switch context {
-        case .details: return CGFloat(prefs[UserPreferences.detailsBackgroundBlur])
-        case .browsing: return CGFloat(prefs[UserPreferences.browsingBackgroundBlur])
+        case .details: return CGFloat(intPreferenceSnapshot(UserPreferences.detailsBackgroundBlur))
+        case .browsing: return CGFloat(intPreferenceSnapshot(UserPreferences.browsingBackgroundBlur))
         case .none: return 0
         }
+    }
+
+    // Read UserDefaults directly here to avoid exclusivity overlap with ObservableObject-backed preference writes.
+    private func boolPreferenceSnapshot(_ preference: Preference<Bool>) -> Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: preference.key) != nil else {
+            return preference.defaultValue
+        }
+        return defaults.bool(forKey: preference.key)
+    }
+
+    private func intPreferenceSnapshot(_ preference: Preference<Int>) -> Int {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: preference.key) != nil else {
+            return preference.defaultValue
+        }
+        return defaults.integer(forKey: preference.key)
     }
 
     private func update() {
