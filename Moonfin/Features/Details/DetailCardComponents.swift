@@ -417,10 +417,10 @@ struct FocusFirstRow<Content: View>: View {
 
     var body: some View {
         scrollContent
-            .defaultFocus($focusedId, restoredItemId ?? firstItemId)
+            .defaultFocus($focusedId, preferredItemId ?? restoredItemId ?? firstItemId)
             .onAppear {
                 guard transitionToken > 0,
-                      let target = preferredItemId ?? restoredItemId ?? firstItemId
+                      let target = preferredItemId ?? restoredItemId
                 else { return }
                 focusedId = target
             }
@@ -429,7 +429,7 @@ struct FocusFirstRow<Content: View>: View {
                 focusedId = target
             }
             .onChange(of: transitionToken) { newValue in
-                guard newValue > 0, let target = preferredItemId ?? restoredItemId ?? firstItemId else { return }
+                guard newValue > 0, let target = preferredItemId ?? restoredItemId else { return }
                 focusedId = target
             }
     }

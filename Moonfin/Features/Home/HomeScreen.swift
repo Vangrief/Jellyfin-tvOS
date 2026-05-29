@@ -453,20 +453,17 @@ struct HomeScreen: View {
     private func resolveMediaBarDownTarget(for row: HomeRow) -> (itemId: String?, itemIndex: Int?, reason: String) {
         guard !row.items.isEmpty else { return (nil, nil, "empty_row") }
 
-        if let rememberedIndex = lastFocusedItemIndexByRowId[row.id] {
-            let clampedIndex = max(0, min(rememberedIndex, row.items.count - 1))
-            let reason = clampedIndex == rememberedIndex ? "same_column" : "nearest_valid"
-            return (row.items[clampedIndex].id, clampedIndex, reason)
-        }
+        return (row.items.first?.id, 0, "media_bar_down_first_item_forced")
+    }
 
-        if let lastFocusedRowId,
-           lastFocusedRowId == row.id,
-           let lastFocusedItemId,
-           let resolvedIndex = row.items.firstIndex(where: { $0.id == lastFocusedItemId }) {
-            return (row.items[resolvedIndex].id, resolvedIndex, "restored_item")
-        }
+    private func resolveVerticalTransitionTarget(from sourceRowId: String?, to targetRow: HomeRow) -> (itemId: String, itemIndex: Int)? {
+        guard let sourceRowId,
+              !targetRow.items.isEmpty,
+              let sourceIndex = lastFocusedItemIndexByRowId[sourceRowId]
+        else { return nil }
 
-        return (row.items.first?.id, row.items.isEmpty ? nil : 0, "first_item")
+        let clampedIndex = max(0, min(sourceIndex, targetRow.items.count - 1))
+        return (targetRow.items[clampedIndex].id, clampedIndex)
     }
 
     private func retargetMediaBarDownHandoff(rowId: String, itemId: String?, reason: String) {
@@ -952,6 +949,24 @@ struct HomeScreen: View {
                                         }
 
                                         let didEnterDifferentRow = previousFocusedRowId != row.id
+
+                                        if !isRestoringPosition,
+                                           didEnterDifferentRow,
+                                           (lastMoveCommandDirection == "down" || lastMoveCommandDirection == "up"),
+                                           let verticalTarget = resolveVerticalTransitionTarget(from: previousFocusedRowId, to: row),
+                                           verticalTarget.itemIndex != itemIndex {
+                                            let sourceRowLabel = previousFocusedRowId ?? "nil"
+                                            focusedRowId = row.id
+                                            lastFocusedRowId = row.id
+                                            lastFocusedItemId = verticalTarget.itemId
+                                            lastFocusedItemIndexByRowId[row.id] = verticalTarget.itemIndex
+                                            restoreRowFocusTrigger += 1
+                                            debugLog(
+                                                "vertical_transition_corrective_refocus",
+                                                details: "source_row=\(sourceRowLabel) target_row=\(row.id) expected_item=\(verticalTarget.itemId) expected_index=\(verticalTarget.itemIndex) current_item=\(item.id) current_index=\(itemIndex) direction=\(lastMoveCommandDirection)"
+                                            )
+                                            return
+                                        }
 
                                         focusedRowId = row.id
 

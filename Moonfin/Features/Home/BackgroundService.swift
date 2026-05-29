@@ -29,11 +29,6 @@ final class BackgroundService: ObservableObject {
     }
 
     func setBackground(urls: [String], context: BlurContext = .browsing) {
-        let isBackdropEnabled = boolPreferenceSnapshot(UserPreferences.backdropEnabled)
-        if !isBackdropEnabled {
-            clearBackground()
-            return
-        }
         setBackgroundInternal(urls: urls, context: context)
     }
 
