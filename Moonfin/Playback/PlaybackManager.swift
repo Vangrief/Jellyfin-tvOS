@@ -441,6 +441,15 @@ final class PlaybackManager: ObservableObject {
         TimeInterval(preferences[UserPreferences.skipForwardLength])
     }
 
+    var skipBackSeconds: TimeInterval {
+        let raw = preferences[UserPreferences.skipBackLength]
+        // Legacy values were stored in milliseconds; normalize for playback.
+        if raw >= 1_000 {
+            return TimeInterval(raw) / 1_000.0
+        }
+        return TimeInterval(raw)
+    }
+
     private func prependIntros(for item: ServerItem) async {
         do {
             let intros = try await client.userLibraryApi.getIntros(itemId: item.id)

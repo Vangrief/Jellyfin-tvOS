@@ -115,8 +115,8 @@ struct SettingsPlaybackScreen: View {
             SettingsListButton(
                 icon: "backward.fill",
                 heading: "Skip Back Length",
-                caption: "Back-skip interval in milliseconds",
-                trailingText: "\(prefs[UserPreferences.skipBackLength]) ms",
+                caption: "Seconds to skip backward",
+                trailingText: "\(prefs[UserPreferences.skipBackLength]) s",
                 action: { settingsRouter.navigate(to: .playbackSkipBackLength) }
             )
             .focused($focusedRoute, equals: .playbackSkipBackLength)

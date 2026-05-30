@@ -508,8 +508,8 @@ private struct SettingsRouteResolver: View {
             SettingsSyncPlayValueScreen(
                 title: "Skip Back Length",
                 preference: UserPreferences.skipBackLength,
-                options: [1000, 3000, 5000, 10_000, 15_000, 30_000, 45_000, 60_000],
-                suffix: " ms"
+                options: [5, 10, 15, 20, 25, 30],
+                suffix: Strings.secondsShort
             )
         case .playbackDefaultAudioLanguage:
             SettingsPickerScreen(

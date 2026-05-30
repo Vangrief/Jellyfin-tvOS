@@ -34,7 +34,7 @@ final class UserPreferences: ObservableObject {
         key: "refresh_rate_switching_behavior",
         defaultValue: RefreshRateSwitchingBehavior.disabled
     )
-    static let skipBackLength = Preference(key: "playback_skip_back", defaultValue: 10_000)
+    static let skipBackLength = Preference(key: "playback_skip_back", defaultValue: 10)
 
     static let navbarPosition = Preference(key: "navbar_position", defaultValue: NavbarPosition.top)
     static let navbarColor = Preference(key: "navbar_color", defaultValue: MediaBarOverlayColor.gray)

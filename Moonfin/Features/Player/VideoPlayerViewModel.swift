@@ -50,7 +50,9 @@ final class VideoPlayerViewModel: ObservableObject {
         return f
     }()
 
-    let skipBackSeconds: TimeInterval = 10
+    var skipBackSeconds: TimeInterval {
+        playbackManager.skipBackSeconds
+    }
 
     var skipForwardSeconds: TimeInterval {
         playbackManager.skipForwardSeconds
