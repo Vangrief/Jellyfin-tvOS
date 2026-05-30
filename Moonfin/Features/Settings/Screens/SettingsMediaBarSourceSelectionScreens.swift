@@ -29,7 +29,7 @@ struct SettingsMediaBarLibrariesSelectionScreen: View {
                 ForEach(choices) { choice in
                     SourceMultiSelectRow(
                         label: choice.name,
-                        selected: selectedIds.contains(choice.id)
+                        selected: selectedIds.contains(normalized(choice.id))
                     ) {
                         toggle(choice.id)
                     }
@@ -42,7 +42,7 @@ struct SettingsMediaBarLibrariesSelectionScreen: View {
     @MainActor
     private func loadChoices() async {
         isLoading = true
-        selectedIds = Set(prefs[UserPreferences.mediaBarLibraryIds])
+        selectedIds = Set(prefs[UserPreferences.mediaBarLibraryIds].map(normalized))
 
         let views = await container.userViewsService.awaitLoaded()
         choices = views.map { SourceChoice(id: $0.id, name: $0.name) }
@@ -52,12 +52,17 @@ struct SettingsMediaBarLibrariesSelectionScreen: View {
     }
 
     private func toggle(_ id: String) {
-        if selectedIds.contains(id) {
-            selectedIds.remove(id)
+        let normalizedId = normalized(id)
+        if selectedIds.contains(normalizedId) {
+            selectedIds.remove(normalizedId)
         } else {
-            selectedIds.insert(id)
+            selectedIds.insert(normalizedId)
         }
         prefs[UserPreferences.mediaBarLibraryIds] = Array(selectedIds).sorted()
+    }
+
+    private func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 
@@ -85,7 +90,7 @@ struct SettingsMediaBarCollectionsSelectionScreen: View {
                 ForEach(choices) { choice in
                     SourceMultiSelectRow(
                         label: choice.name,
-                        selected: selectedIds.contains(choice.id)
+                        selected: selectedIds.contains(normalized(choice.id))
                     ) {
                         toggle(choice.id)
                     }
@@ -98,7 +103,7 @@ struct SettingsMediaBarCollectionsSelectionScreen: View {
     @MainActor
     private func loadChoices() async {
         isLoading = true
-        selectedIds = Set(prefs[UserPreferences.mediaBarCollectionIds])
+        selectedIds = Set(prefs[UserPreferences.mediaBarCollectionIds].map(normalized))
 
         guard let session = container.sessionRepository.currentSession.value,
               let server = container.serverRepository.currentServer.value else {
@@ -129,12 +134,17 @@ struct SettingsMediaBarCollectionsSelectionScreen: View {
     }
 
     private func toggle(_ id: String) {
-        if selectedIds.contains(id) {
-            selectedIds.remove(id)
+        let normalizedId = normalized(id)
+        if selectedIds.contains(normalizedId) {
+            selectedIds.remove(normalizedId)
         } else {
-            selectedIds.insert(id)
+            selectedIds.insert(normalizedId)
         }
         prefs[UserPreferences.mediaBarCollectionIds] = Array(selectedIds).sorted()
+    }
+
+    private func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 
@@ -162,7 +172,7 @@ struct SettingsMediaBarExcludedGenresSelectionScreen: View {
                 ForEach(choices) { choice in
                     SourceMultiSelectRow(
                         label: choice.name,
-                        selected: selectedNames.contains(choice.name)
+                        selected: selectedNames.contains(normalized(choice.name))
                     ) {
                         toggle(choice.name)
                     }
@@ -175,7 +185,7 @@ struct SettingsMediaBarExcludedGenresSelectionScreen: View {
     @MainActor
     private func loadChoices() async {
         isLoading = true
-        selectedNames = Set(prefs[UserPreferences.mediaBarExcludedGenres])
+        selectedNames = Set(prefs[UserPreferences.mediaBarExcludedGenres].map(normalized))
 
         guard let session = container.sessionRepository.currentSession.value,
               let server = container.serverRepository.currentServer.value else {
@@ -206,12 +216,17 @@ struct SettingsMediaBarExcludedGenresSelectionScreen: View {
     }
 
     private func toggle(_ name: String) {
-        if selectedNames.contains(name) {
-            selectedNames.remove(name)
+        let normalizedName = normalized(name)
+        if selectedNames.contains(normalizedName) {
+            selectedNames.remove(normalizedName)
         } else {
-            selectedNames.insert(name)
+            selectedNames.insert(normalizedName)
         }
         prefs[UserPreferences.mediaBarExcludedGenres] = Array(selectedNames).sorted()
+    }
+
+    private func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 

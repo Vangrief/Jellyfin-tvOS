@@ -117,6 +117,8 @@ struct SettingsPluginMediaBarScreen: View {
     }
 
     private func selectedCountLabel(_ ids: [String]) -> String {
-        ids.isEmpty ? "All" : "\(ids.count) selected"
+        let normalizedCount = Set(ids.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }).count
+        return normalizedCount == 0 ? "All" : "\(normalizedCount) selected"
     }
 }
