@@ -351,8 +351,8 @@ enum GenresRowItems: String, StringRepresentableEnum, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .movies: return userPreferencesLocalized("movies")
-        case .series: return userPreferencesLocalized("tv_shows")
+        case .movies: return userPreferencesLocalized("lbl_movies")
+        case .series: return userPreferencesLocalized("lbl_tv_series")
         case .both: return userPreferencesLocalized("both")
         }
     }
