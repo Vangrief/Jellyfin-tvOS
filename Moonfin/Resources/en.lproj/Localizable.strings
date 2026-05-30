@@ -380,6 +380,12 @@
 "lbl_hidden" = "Hidden";
 "lbl_visible" = "Visible";
 "lbl_library_visibility_description" = "Show this library in the home screen and toolbar";
+"settings_library_visibility" = "Library Visibility";
+"settings_library_visibility_summary" = "Show or hide libraries in navigation and latest media";
+"settings_library_visibility_description" = "Choose which libraries appear in navigation and latest media.";
+"settings_library_visibility_show_in_navigation" = "Show in Navigation";
+"settings_library_visibility_show_in_latest_media" = "Show in Latest Media";
+"settings_library_visibility_no_libraries" = "No libraries available";
 "discovered_servers_title" = "Discovered servers";
 "discovered_servers_empty" = "No servers found on local network.";
 "connect_manually_by_address" = "Enter server address";

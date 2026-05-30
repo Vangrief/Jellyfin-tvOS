@@ -73,6 +73,7 @@ enum SettingsRoute: Hashable {
     case homeImageTypeLiveTv
 
     case libraries
+    case librariesVisibility
     case librariesDisplay(itemId: String, displayPreferencesId: String, serverId: String, userId: String)
     case librariesDisplayImageSize(itemId: String, displayPreferencesId: String, serverId: String, userId: String)
     case librariesDisplayImageType(itemId: String, displayPreferencesId: String, serverId: String, userId: String)

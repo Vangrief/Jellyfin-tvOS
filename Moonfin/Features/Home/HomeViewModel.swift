@@ -37,6 +37,7 @@ final class HomeViewModel: ObservableObject {
     private static let backdropDebounceMs: UInt64 = 200_000_000
     private static let chunkSize = 15
     private static let multiServerLimit = 30
+    private static let rowLoadConcurrency = 4
 
     private static let defaultFields: [ItemField] = [
         .overview, .genres, .providerIds, .mediaSources, .mediaStreams, .childCount
@@ -65,6 +66,14 @@ final class HomeViewModel: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.loadContent(forceReload: true, preserveExisting: true)
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .libraryVisibilityDidChange)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.loadContent(forceReload: true, preserveExisting: true)
             }
             .store(in: &cancellables)
     }
@@ -413,13 +422,20 @@ final class HomeViewModel: ObservableObject {
 
         let sessions = await multiRepo.getLoggedInServers()
         let clientsByServerId = Dictionary(uniqueKeysWithValues: sessions.map { ($0.server.id, $0.client) })
+        let visibilityExcludes = await fetchMultiServerVisibilityExcludes(sessions: sessions)
 
         let needsViews = mediaBarViewModel.isEnabled
             || sections.contains(.latestMedia) || sections.contains(.myMedia) || sections.contains(.myMediaSmall)
         var aggregatedLibraries: [AggregatedLibrary] = []
         if needsViews {
             aggregatedLibraries = await multiRepo.getAggregatedLibraries()
-            userViews = aggregatedLibraries.map(\.library)
+            userViews = aggregatedLibraries
+                .filter { library in
+                    !visibilityExcludes.navigation.contains(
+                            Self.visibilityKey(serverId: library.server.id.uuidString, libraryId: library.library.id)
+                    )
+                }
+                .map(\.library)
         }
 
         guard !Task.isCancelled else { return }
@@ -460,6 +476,9 @@ final class HomeViewModel: ObservableObject {
                     let filteredLibs = aggregatedLibraries.filter { lib in
                         guard let ct = lib.library.collectionType?.lowercased() else { return true }
                         return supportedTypes.contains(ct)
+                            && !visibilityExcludes.latest.contains(
+                                Self.visibilityKey(serverId: lib.server.id.uuidString, libraryId: lib.library.id)
+                            )
                     }
                     for lib in filteredLibs {
                         let rowId = "ms_latest_\(lib.server.id.uuidString)_\(lib.library.id)"
@@ -1213,9 +1232,10 @@ final class HomeViewModel: ObservableObject {
 
     private var latestMediaViewTypes: [ServerItem] {
         let supportedTypes: Set<String> = ["movies", "tvshows", "music", "mixed", "photos"]
+        let excludedIds = container.userViewsService.latestMediaExcludes
         return userViews.filter { view in
             guard let ct = view.collectionType?.lowercased() else { return true }
-            return supportedTypes.contains(ct)
+            return supportedTypes.contains(ct) && !excludedIds.contains(view.id)
         }
     }
 
@@ -1245,6 +1265,46 @@ final class HomeViewModel: ObservableObject {
         default:
             return nil
         }
+    }
+
+    private func fetchMultiServerVisibilityExcludes(
+        sessions: [ServerUserSession]
+    ) async -> (navigation: Set<String>, latest: Set<String>) {
+        await withTaskGroup(of: (Set<String>, Set<String>).self) { group in
+            for session in sessions {
+                group.addTask {
+                    do {
+                        let data = try await session.client.httpClient.requestData("/Users/\(session.userId.uuidString)")
+                        guard let userJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                              let configuration = userJSON["Configuration"] as? [String: Any] else {
+                            return ([], [])
+                        }
+
+                        let navigation = Set((configuration["MyMediaExcludes"] as? [String] ?? []).map {
+                            Self.visibilityKey(serverId: session.server.id.uuidString, libraryId: $0)
+                        })
+                        let latest = Set((configuration["LatestItemsExcludes"] as? [String] ?? []).map {
+                            Self.visibilityKey(serverId: session.server.id.uuidString, libraryId: $0)
+                        })
+                        return (navigation, latest)
+                    } catch {
+                        return ([], [])
+                    }
+                }
+            }
+
+            var navigation = Set<String>()
+            var latest = Set<String>()
+            for await result in group {
+                navigation.formUnion(result.0)
+                latest.formUnion(result.1)
+            }
+            return (navigation, latest)
+        }
+    }
+
+    nonisolated private static func visibilityKey(serverId: String, libraryId: String) -> String {
+        "\(serverId)|\(libraryId)"
     }
 
     private func dedupeNextUpAgainstContinueWatching() {
@@ -1278,16 +1338,25 @@ final class HomeViewModel: ObservableObject {
             return (rowId, source, sourceClient)
         }
 
-        await withTaskGroup(of: String?.self) { group in
-            for load in rowLoads {
-                group.addTask {
-                    await load.source.retrieve(client: load.sourceClient)
-                    return load.rowId
+        guard !rowLoads.isEmpty else { return }
+
+        let batchSize = max(1, Self.rowLoadConcurrency)
+        for batchStart in stride(from: 0, to: rowLoads.count, by: batchSize) {
+            let batchEnd = min(batchStart + batchSize, rowLoads.count)
+            let batch = rowLoads[batchStart..<batchEnd]
+
+            await withTaskGroup(of: String?.self) { group in
+                for load in batch {
+                    group.addTask {
+                        await load.source.retrieve(client: load.sourceClient)
+                        return load.rowId
+                    }
                 }
-            }
-            for await rowId in group {
-                guard let rowId, !Task.isCancelled else { continue }
-                syncRow(rowId)
+
+                for await rowId in group {
+                    guard let rowId, !Task.isCancelled else { continue }
+                    syncRow(rowId)
+                }
             }
         }
     }

@@ -438,6 +438,12 @@ enum Strings {
     static var settingsImageType: String { l("settings_image_type") }
     static var settingsHomeImageTypeDescription: String { l("settings_home_image_type_description") }
     static var settingsSections: String { l("settings_sections") }
+    static var settingsLibraryVisibility: String { l("settings_library_visibility") }
+    static var settingsLibraryVisibilitySummary: String { l("settings_library_visibility_summary") }
+    static var settingsLibraryVisibilityDescription: String { l("settings_library_visibility_description") }
+    static var settingsLibraryVisibilityShowInNavigation: String { l("settings_library_visibility_show_in_navigation") }
+    static var settingsLibraryVisibilityShowInLatestMedia: String { l("settings_library_visibility_show_in_latest_media") }
+    static var settingsLibraryVisibilityNoLibraries: String { l("settings_library_visibility_no_libraries") }
     static var settingsRearrangeHint: String { l("settings_rearrange_hint") }
     static var settingsResetToDefaults: String { l("settings_reset_to_defaults") }
     static var comingSoon: String { l("settings_coming_soon") }

@@ -297,6 +297,8 @@ private struct SettingsRouteResolver: View {
             )
         case .libraries:
             SettingsLibrariesScreen()
+        case .librariesVisibility:
+            SettingsLibraryVisibilityScreen()
         case .librariesDisplay(let itemId, let displayPreferencesId, let serverId, let userId):
             SettingsLibraryDisplayScreen(
                 itemId: itemId,

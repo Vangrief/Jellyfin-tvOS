@@ -9,10 +9,11 @@ struct SettingsLibrariesScreen: View {
         SettingsScreenLayout(title: "Libraries") {
             SettingsListButton(
                 icon: "eye",
-                heading: "Library Visibility",
-                caption: "Show or hide libraries in navigation and latest media",
-                action: { settingsRouter.navigate(to: .placeholder(title: "Library Visibility")) }
+                heading: Strings.settingsLibraryVisibility,
+                caption: Strings.settingsLibraryVisibilitySummary,
+                action: { settingsRouter.navigate(to: .librariesVisibility) }
             )
+            .focused($focusedRoute, equals: .librariesVisibility)
 
             SettingsToggleButton(
                 icon: "folder",

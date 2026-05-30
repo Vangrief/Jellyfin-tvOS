@@ -34,7 +34,7 @@ final class LibraryBrowseViewModel: ObservableObject {
     private var currentPage = 0
     private var isLoadingMore = false
     private var backdropDebounceTask: Task<Void, Never>?
-    private let pageSize = 100
+    private let pageSize = 50
     private var loadTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
@@ -53,7 +53,7 @@ final class LibraryBrowseViewModel: ObservableObject {
     }
 
     private static let defaultFields: [ItemField] = [
-        .overview, .primaryImageAspectRatio, .genres, .mediaSources, .providerIds
+        .overview, .primaryImageAspectRatio, .genres, .providerIds
     ]
 
     var sortOptions: [SortOption] {

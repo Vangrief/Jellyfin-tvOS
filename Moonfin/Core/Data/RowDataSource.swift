@@ -21,13 +21,11 @@ final class RowDataSource {
     var sortOrder: SortOrder?
     var filters = FilterOptions()
 
-    static let maxItems = 100
+    static let maxItems = 60
     private static let pluginDynamicFields: [ItemField] = [
         .overview,
         .genres,
         .providerIds,
-        .mediaSources,
-        .mediaStreams,
         .childCount,
     ]
 

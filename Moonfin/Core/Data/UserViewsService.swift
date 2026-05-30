@@ -4,12 +4,14 @@ import Combine
 @MainActor
 final class UserViewsService: ObservableObject {
     @Published private(set) var userViews: [ServerItem] = []
+    @Published private(set) var latestMediaExcludes: Set<String> = []
 
     private let serverRepository: ServerRepositoryProtocol
     private let serverClientFactory: MediaServerClientFactory
     private let userRepository: UserRepositoryProtocol
     private let userPreferences: UserPreferences
     private var unfilteredViews: [ServerItem] = []
+    private var myMediaExcludes: Set<String> = []
     private var lastFolderViewEnabled: Bool?
     private var cancellables = Set<AnyCancellable>()
     private var loadTask: Task<Void, Never>?
@@ -51,7 +53,7 @@ final class UserViewsService: ObservableObject {
             if item.collectionType?.lowercased() == "folders" {
                 return enabled
             }
-            return true
+            return !myMediaExcludes.contains(item.id)
         }
     }
 
@@ -99,9 +101,24 @@ final class UserViewsService: ObservableObject {
             let client = serverClientFactory.client(for: server)
             do {
                 let views = try await client.userViewsApi.getUserViews(userId: userId)
+                var myMediaExcludes: Set<String> = []
+                var latestMediaExcludes: Set<String> = []
+                do {
+                    let data = try await client.httpClient.requestData("/Users/\(userId)")
+                    if let userJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let configuration = userJSON["Configuration"] as? [String: Any] {
+                        myMediaExcludes = Set(configuration["MyMediaExcludes"] as? [String] ?? [])
+                        latestMediaExcludes = Set(configuration["LatestItemsExcludes"] as? [String] ?? [])
+                    }
+                } catch {
+                    myMediaExcludes = []
+                    latestMediaExcludes = []
+                }
                 guard !Task.isCancelled else { return }
                 guard self.currentContextKey == contextKey else { return }
                 self.unfilteredViews = views
+                self.myMediaExcludes = myMediaExcludes
+                self.latestMediaExcludes = latestMediaExcludes
                 self.applyFilter()
             } catch {
                 guard !Task.isCancelled else { return }
@@ -109,6 +126,8 @@ final class UserViewsService: ObservableObject {
                 self.currentContextKey = nil
                 self.unfilteredViews = []
                 self.userViews = []
+                self.myMediaExcludes = []
+                self.latestMediaExcludes = []
             }
         }
     }
@@ -118,6 +137,11 @@ final class UserViewsService: ObservableObject {
             await loadTask.value
         }
         return userViews
+    }
+
+    func refreshCurrentContext() {
+        currentContextKey = nil
+        refreshViewsForCurrentContext()
     }
 }
 
