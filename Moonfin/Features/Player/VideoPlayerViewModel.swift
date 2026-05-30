@@ -58,6 +58,10 @@ final class VideoPlayerViewModel: ObservableObject {
         playbackManager.skipForwardSeconds
     }
 
+    var nextUpBehavior: NextUpBehavior {
+        playbackManager.nextUpBehaviorPreference
+    }
+
     private var _cachedTitle: String = ""
     private var _cachedSubtitle: String = ""
     private var _cachedLogoUrl: String?

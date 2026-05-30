@@ -121,6 +121,7 @@ struct VideoPlayerScreen: View {
                             nextItem: nextItem,
                             countdown: remaining,
                             imageUrl: viewModel.nextItemImageUrl,
+                            behavior: viewModel.nextUpBehavior,
                             onPlayNext: { nextUpManager.confirmPlayNext() },
                             onClose: { nextUpManager.dismiss() }
                         )
