@@ -183,9 +183,9 @@ struct ItemCard: View {
             VStack {
                 HStack {
                     Image(systemName: "heart.fill")
-                        .font(.caption2xs)
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.colorRed300)
-                        .padding(4)
+                        .padding(6)
                     Spacer()
                 }
                 Spacer()
@@ -203,19 +203,19 @@ struct ItemCard: View {
                     if watchedIndicator == .always || watchedIndicator == .episodesOnly,
                        let played = item.userData?.played, played {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.caption2xs)
-                            .foregroundColor(.colorGreen500)
-                            .padding(4)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(theme.isNeonPulseTheme ? theme.colorScheme.badge : .colorGreen500)
+                            .padding(6)
                     } else if let count = item.userData?.unplayedItemCount, count > 0 {
                         Text("\(count)")
-                            .font(.caption2xs)
+                            .font(.captionXs)
                             .fontWeight(.bold)
                             .foregroundColor(theme.colorScheme.onBadge)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
                             .background(theme.colorScheme.badge)
                             .clipShape(Capsule())
-                            .padding(4)
+                            .padding(6)
                     }
                 }
                 Spacer()

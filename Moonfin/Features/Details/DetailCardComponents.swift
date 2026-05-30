@@ -187,10 +187,10 @@ struct FocusableEpisodeCard: View {
 
             if item.userData?.played ?? false {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.colorGreen500)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.colorScheme.badge : .colorGreen500)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(6)
+                    .padding(8)
             }
         }
         .frame(width: thumbWidth, height: thumbHeight)
@@ -449,6 +449,30 @@ struct FocusFirstRow<Content: View>: View {
 
 // MARK: - Expandable Bio
 
+private struct ExpandableBioWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct ExpandableBioCollapsedHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct ExpandableBioFullHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct ExpandableBioText: View {
     let text: String
     @Binding var isExpanded: Bool
@@ -456,31 +480,104 @@ struct ExpandableBioText: View {
 
     @EnvironmentObject var theme: MoonfinTheme
     @FocusState private var isFocused: Bool
+    @State private var textWidth: CGFloat = 0
+    @State private var collapsedHeight: CGFloat = 0
+    @State private var fullHeight: CGFloat = 0
+
+    private var canExpand: Bool {
+        textWidth > 0 && (fullHeight - collapsedHeight > 1)
+    }
 
     var body: some View {
-        Button {
-            isExpanded.toggle()
-        } label: {
-            VStack(alignment: .leading, spacing: SpaceTokens.spaceXs) {
-                Text(text)
-                    .font(.bodyLg)
-                    .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
-                    .lineLimit(isExpanded ? nil : lineLimit)
-                    .padding(.horizontal, SpaceTokens.spaceSm)
+        Group {
+            if canExpand {
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    bioContent(showToggle: true)
+                }
+                .buttonStyle(CleanButtonStyle())
+                .focused($isFocused)
+            } else {
+                bioContent(showToggle: false)
+            }
+        }
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ExpandableBioWidthPreferenceKey.self, value: proxy.size.width)
+            }
+        )
+        .onPreferenceChange(ExpandableBioWidthPreferenceKey.self) { width in
+            let measured = max(0, width - (SpaceTokens.spaceSm * 2))
+            if abs(textWidth - measured) > 0.5 {
+                textWidth = measured
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            if textWidth > 0 {
+                measurementLayer
+            }
+        }
+        .onPreferenceChange(ExpandableBioCollapsedHeightPreferenceKey.self) { newValue in
+            if abs(collapsedHeight - newValue) > 0.5 {
+                collapsedHeight = newValue
+            }
+        }
+        .onPreferenceChange(ExpandableBioFullHeightPreferenceKey.self) { newValue in
+            if abs(fullHeight - newValue) > 0.5 {
+                fullHeight = newValue
+            }
+        }
+    }
 
+    @ViewBuilder
+    private func bioContent(showToggle: Bool) -> some View {
+        VStack(alignment: .leading, spacing: SpaceTokens.spaceXs) {
+            Text(text)
+                .font(.bodyLg)
+                .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
+                .lineLimit(showToggle && !isExpanded ? lineLimit : nil)
+                .padding(.horizontal, SpaceTokens.spaceSm)
+
+            if showToggle {
                 Text(isExpanded ? Strings.seerrShowLess : Strings.seerrShowMore)
                     .font(.captionXs)
                     .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.7) : theme.accent)
                     .padding(.horizontal, SpaceTokens.spaceSm)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, SpaceTokens.spaceSm)
-            .background(
-                RoundedRectangle(cornerRadius: RadiusTokens.small)
-                    .fill(isFocused ? theme.colorScheme.buttonFocused.opacity(0.08) : Color.clear)
-            )
         }
-        .buttonStyle(CleanButtonStyle())
-        .focused($isFocused)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, SpaceTokens.spaceSm)
+        .background(
+            RoundedRectangle(cornerRadius: RadiusTokens.small)
+                .fill((showToggle && isFocused) ? theme.colorScheme.buttonFocused.opacity(0.08) : Color.clear)
+        )
+    }
+
+    private var measurementLayer: some View {
+        VStack(spacing: 0) {
+            Text(text)
+                .font(.bodyLg)
+                .lineLimit(lineLimit)
+                .frame(width: textWidth, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: ExpandableBioCollapsedHeightPreferenceKey.self, value: proxy.size.height)
+                    }
+                )
+
+            Text(text)
+                .font(.bodyLg)
+                .lineLimit(nil)
+                .frame(width: textWidth, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: ExpandableBioFullHeightPreferenceKey.self, value: proxy.size.height)
+                    }
+                )
+        }
+        .hidden()
     }
 }

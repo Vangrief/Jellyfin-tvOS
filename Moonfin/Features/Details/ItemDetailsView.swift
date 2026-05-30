@@ -1101,7 +1101,7 @@ struct ItemDetailsView: View {
             let others = viewModel.episodes.filter { $0.id != viewModel.item?.id }
             if !others.isEmpty {
                 detailSection(title: "More from This Season", id: "moreEpisodes") {
-                    itemRow(items: others, imageType: .thumb, aspectRatio: 16.0/9.0, cardWidth: 280)
+                    itemRow(items: others, imageType: .thumb, aspectRatio: 16.0/9.0, cardWidth: 400)
                 }
             }
         }
@@ -1359,8 +1359,8 @@ struct ItemDetailsView: View {
     }
 
     private func chapterRow(item: ServerItem, chapters: [ServerChapter]) -> some View {
-        let cardWidth: CGFloat = 320
-        let cardHeight: CGFloat = 180
+        let cardWidth: CGFloat = 400
+        let cardHeight: CGFloat = 225
 
         return FocusFirstRow(
             firstItemId: chapters.first.map(chapterFocusId),

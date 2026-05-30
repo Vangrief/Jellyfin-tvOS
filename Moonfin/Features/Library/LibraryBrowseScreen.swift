@@ -382,16 +382,16 @@ private struct LibraryPosterCard: View {
             EmptyView()
         } else if isPlayed {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 16))
-                .foregroundColor(.green)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(theme.isNeonPulseTheme ? theme.colorScheme.badge : .colorGreen500)
         } else if let count = unplayed, count > 0, watchedIndicator != .hideAfterWatched {
             Text("\(count)")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .background(theme.accent)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(theme.colorScheme.onBadge)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(theme.colorScheme.badge)
+                .clipShape(Capsule())
         }
     }
 
