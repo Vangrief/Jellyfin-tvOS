@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Combine
 
 @MainActor
 final class InactivityTracker: ObservableObject {
@@ -15,10 +16,14 @@ final class InactivityTracker: ObservableObject {
     private var timer: DispatchWorkItem?
     private var lockCount = 0
     private var lastInteractionAt = Date()
+    private var isAppActive = true
+    private var appActiveCancellable: AnyCancellable?
+    private var appBackgroundCancellable: AnyCancellable?
 
     init(userPreferences: UserPreferences, playbackCoordinator: PlaybackCoordinator) {
         self.userPreferences = userPreferences
         self.playbackCoordinator = playbackCoordinator
+        observeAppLifecycle()
         resetTimer()
         updateIdleTimerState()
     }
@@ -54,7 +59,25 @@ final class InactivityTracker: ObservableObject {
     }
 
     private var shouldDisableSystemIdleTimer: Bool {
-        isEnabled || lockCount > 0 || isPlaybackActive || isScreensaverVisible
+        isAppActive
+    }
+
+    private func observeAppLifecycle() {
+        appActiveCancellable = NotificationCenter.default
+            .publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.isAppActive = true
+                self.updateIdleTimerState()
+            }
+
+        appBackgroundCancellable = NotificationCenter.default
+            .publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.isAppActive = false
+                self.updateIdleTimerState()
+            }
     }
 
     func notifyInteraction() {
