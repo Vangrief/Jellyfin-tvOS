@@ -6,6 +6,11 @@ struct SeerrDiscoverView: View {
     @EnvironmentObject var theme: MoonfinTheme
     @EnvironmentObject var router: NavigationRouter
     @EnvironmentObject var container: AppContainer
+    @Namespace private var contentNamespace
+    @Environment(\.resetFocus) private var resetFocus
+
+    let sidebarEntryToken: Int
+    let sidebarHandoffToken: Int
 
     private var navbarIsLeft: Bool {
         container.userPreferences[UserPreferences.navbarPosition] == .left
@@ -15,8 +20,10 @@ struct SeerrDiscoverView: View {
         navbarIsLeft ? LeftSidebar.sidebarInset : 50
     }
 
-    init(seerrRepository: SeerrRepositoryProtocol) {
+    init(seerrRepository: SeerrRepositoryProtocol, sidebarEntryToken: Int = 0, sidebarHandoffToken: Int = 0) {
         _viewModel = StateObject(wrappedValue: SeerrDiscoverViewModel(seerrRepository: seerrRepository))
+        self.sidebarEntryToken = sidebarEntryToken
+        self.sidebarHandoffToken = sidebarHandoffToken
     }
 
     var body: some View {
@@ -36,6 +43,10 @@ struct SeerrDiscoverView: View {
             router.resetNavbarVisibility()
             viewModel.loadContent()
             viewModel.refreshRequests()
+        }
+        .onChange(of: sidebarHandoffToken) { _ in
+            guard navbarIsLeft else { return }
+            DispatchQueue.main.async { resetFocus(in: contentNamespace) }
         }
     }
 
@@ -181,6 +192,8 @@ struct SeerrDiscoverView: View {
             }
             .focusSection()
         }
+        .focusScope(contentNamespace)
+        .prefersDefaultFocus(true, in: contentNamespace)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }

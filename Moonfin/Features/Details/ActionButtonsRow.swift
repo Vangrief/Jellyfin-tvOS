@@ -27,6 +27,7 @@ struct ActionButtonsRow: View {
     let onGoToSeries: (() -> Void)?
     let onAddToPlaylist: (() -> Void)?
     let onDelete: (() -> Void)?
+    var onMoveLeft: (() -> Void)? = nil
 
     private struct ButtonConfig: Identifiable {
         let id: ActionButtonID
@@ -196,6 +197,12 @@ struct ActionButtonsRow: View {
         }
         .frame(maxWidth: .infinity)
         .focusSection()
+        .onMoveCommand { direction in
+            guard direction == .left,
+                  let focused = focusedButton.wrappedValue,
+                  focused == buttonConfigs.first?.id else { return }
+            onMoveLeft?()
+        }
     }
 }
 

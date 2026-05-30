@@ -12,6 +12,8 @@ struct ItemDetailsView: View {
     @EnvironmentObject var container: AppContainer
     @EnvironmentObject var theme: MoonfinTheme
     @EnvironmentObject var router: NavigationRouter
+    @Namespace private var detailsNamespace
+    @Environment(\.resetFocus) private var resetFocus
     @FocusState private var focusedButton: ActionButtonID?
     @FocusState private var focusedTrackId: String?
     @FocusState private var focusedEpisodeId: String?
@@ -27,6 +29,7 @@ struct ItemDetailsView: View {
     @State private var selectedMediaSourceIndex: Int = 0
     let sidebarEntryToken: Int
     let sidebarHandoffToken: Int
+    let onMoveToSidebar: (() -> Void)?
     @State private var currentFocusTarget: DetailsRestoreTarget?
     @State private var sidebarEntryFocusTarget: DetailsRestoreTarget?
     @State private var restoredContentId: String?
@@ -38,7 +41,11 @@ struct ItemDetailsView: View {
     @State private var didAutoPlay = false
 
     private func focusTrace(_ message: String) {
-        _ = message
+#if DEBUG
+        guard ProcessInfo.processInfo.environment["MOONFIN_HOME_FOCUS_DEBUG"] == "1" else { return }
+        let timestamp = Date().timeIntervalSinceReferenceDate
+        print("[DetailsNav] [\(timestamp)] \(message)")
+#endif
     }
 
     private func describe(_ target: DetailsRestoreTarget?) -> String {
@@ -57,12 +64,10 @@ struct ItemDetailsView: View {
         focusTrace("restoring target=\(describe(target))")
         switch target {
         case .button(let button):
-            focusedButton = nil
             DispatchQueue.main.async {
                 focusedButton = button
             }
         case .track(let id):
-            focusedTrackId = nil
             DispatchQueue.main.async {
                 focusedTrackId = id
             }
@@ -88,7 +93,8 @@ struct ItemDetailsView: View {
         serverId: String? = nil,
         autoPlay: Bool = false,
         sidebarEntryToken: Int = 0,
-        sidebarHandoffToken: Int = 0
+        sidebarHandoffToken: Int = 0,
+        onMoveToSidebar: (() -> Void)? = nil
     ) {
         _viewModel = StateObject(wrappedValue: ItemDetailViewModel(
             container: container,
@@ -99,6 +105,7 @@ struct ItemDetailsView: View {
         self.autoPlay = autoPlay
         self.sidebarEntryToken = sidebarEntryToken
         self.sidebarHandoffToken = sidebarHandoffToken
+        self.onMoveToSidebar = onMoveToSidebar
     }
 
     var body: some View {
@@ -138,8 +145,8 @@ struct ItemDetailsView: View {
         .onChange(of: viewModel.isLoading) { isLoading in
             if !isLoading, viewModel.item != nil {
                 DispatchQueue.main.async {
-                    focusedButton = viewModel.canResume ? .resume : .play
-                    focusTrace("initial focusedButton=\(String(describing: focusedButton))")
+                    resetFocus(in: detailsNamespace)
+                    focusTrace("reset focus to detailsNamespace on load")
                 }
                 initializeTrackIndices()
 
@@ -178,10 +185,22 @@ struct ItemDetailsView: View {
         }
         .onChange(of: sidebarHandoffToken) { _ in
             guard navbarIsLeft else { return }
-            let restoreTarget = sidebarEntryFocusTarget ?? currentFocusTarget
-            focusTrace("sidebar handoff target=\(describe(restoreTarget))")
-            guard let restoreTarget else { return }
-            restoreDetailsFocus(restoreTarget)
+            let target = sidebarEntryFocusTarget
+                ?? currentFocusTarget
+                ?? (viewModel.item != nil ? .button(viewModel.canResume ? .resume : .play) : nil)
+            sidebarEntryFocusTarget = nil
+            focusTrace("sidebar handoff target=\(describe(target))")
+            resetFocus(in: detailsNamespace)
+            if let target {
+                restoreDetailsFocus(target)
+            }
+        }
+        .task(id: viewModel.item?.id) {
+            guard viewModel.item != nil, focusedButton == nil else { return }
+            await MainActor.run {
+                resetFocus(in: detailsNamespace)
+                focusTrace("task reset focus to detailsNamespace")
+            }
         }
         .sheet(item: $showTrackSelector) { mode in
             if let item = viewModel.item {
@@ -233,11 +252,13 @@ struct ItemDetailsView: View {
                     loadingView
                 } else if let item = viewModel.item {
                     detailContent(item: item, screenHeight: geo.size.height)
+                        .focusSection()
                 } else {
                     errorView
                 }
             }
         }
+        .focusScope(detailsNamespace)
     }
 
     @ViewBuilder
@@ -416,8 +437,6 @@ struct ItemDetailsView: View {
 
                 actionButtonsSection(item: item)
                     .padding(.top, SpaceTokens.spaceXl)
-                    .padding(.leading, -contentLeading)
-                    .padding(.trailing, -50)
 
                 metadataSection(item: item)
                     .padding(.top, SpaceTokens.spaceMd)
@@ -848,8 +867,11 @@ struct ItemDetailsView: View {
                 } : nil,
                 onDelete: canDelete ? {
                     showDeleteConfirmation = true
-                } : nil
+                } : nil,
+                onMoveLeft: onMoveToSidebar
             )
+            .defaultFocus($focusedButton, viewModel.canResume ? .resume : .play)
+            .prefersDefaultFocus(true, in: detailsNamespace)
         }
     }
 

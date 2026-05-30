@@ -21,10 +21,12 @@ struct LeftSidebar: View {
     @State private var accountSwitcherBusy = false
     @State private var accountSwitcherAccounts: [AccountSwitcherAccount] = []
     @State private var returnFocusItem: SidebarFocusItem = .home
+    @State private var handoffInFlight = false
     @FocusState private var focusedItem: SidebarFocusItem?
 
     let onMoveToContent: (() -> Void)?
     let onSidebarEntered: (() -> Void)?
+    let requestFocusToken: Int
 
     static let sidebarInset: CGFloat = 104
     private static let expandedWidth: CGFloat = 640
@@ -32,11 +34,13 @@ struct LeftSidebar: View {
     init(
         container: AppContainer,
         onMoveToContent: (() -> Void)? = nil,
-        onSidebarEntered: (() -> Void)? = nil
+        onSidebarEntered: (() -> Void)? = nil,
+        requestFocusToken: Int = 0
     ) {
         _viewModel = StateObject(wrappedValue: NavbarViewModel(container: container))
         self.onMoveToContent = onMoveToContent
         self.onSidebarEntered = onSidebarEntered
+        self.requestFocusToken = requestFocusToken
     }
 
     private var hasVisibleLibraries: Bool {
@@ -102,7 +106,11 @@ struct LeftSidebar: View {
         if let current = focusedItem {
             returnFocusItem = current
         }
+        handoffInFlight = true
         onMoveToContent?()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            handoffInFlight = false
+        }
     }
 
     private func presentAccountSwitcher() {
@@ -176,6 +184,12 @@ struct LeftSidebar: View {
                     handoffFocusToContent()
                 }
             }
+            .onChange(of: requestFocusToken) { token in
+                guard token > 0 else { return }
+                DispatchQueue.main.async {
+                    focusedItem = normalizedFocusItem(returnFocusItem)
+                }
+            }
             .onChange(of: focusedItem) { newValue in
                 if let newValue {
                     if allowAutoExpansion {
@@ -189,6 +203,7 @@ struct LeftSidebar: View {
                             if allowAutoExpansion {
                                 applyExpansionState(for: target)
                             }
+                            guard !handoffInFlight else { return }
                             DispatchQueue.main.async {
                                 focusedItem = target
                             }

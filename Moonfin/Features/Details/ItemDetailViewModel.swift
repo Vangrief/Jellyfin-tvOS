@@ -471,7 +471,11 @@ final class ItemDetailViewModel: ObservableObject {
 
     private func loadSeasons(seriesId: String, userId: String, client: MediaServerClient) async {
         do {
-            let result = try await client.itemsApi.getSeasons(seriesId: seriesId, userId: userId)
+            let result = try await client.itemsApi.getSeasons(
+                seriesId: seriesId,
+                userId: userId,
+                fields: [.overview, .primaryImageAspectRatio, .childCount]
+            )
             seasons = result.items
         } catch { }
     }
@@ -494,8 +498,12 @@ final class ItemDetailViewModel: ObservableObject {
 
     private func loadSimilar(itemId: String, client: MediaServerClient) async {
         do {
-            let result = try await client.itemsApi.getSimilarItems(itemId: itemId, limit: 16)
-            similar = await enrichItemsForCardMetadata(items: result.items, client: client)
+            let result = try await client.itemsApi.getSimilarItems(
+                itemId: itemId,
+                limit: 16,
+                fields: Self.cardMetadataFields
+            )
+            similar = result.items
         } catch { }
     }
 
@@ -538,7 +546,8 @@ final class ItemDetailViewModel: ObservableObject {
                     parentId: itemId,
                     fields: Self.cardMetadataFields,
                     limit: 120,
-                    enableUserData: true
+                    enableUserData: true,
+                    enableTotalRecordCount: false
                 )
             )
             collectionItems = result.items
@@ -636,8 +645,11 @@ final class ItemDetailViewModel: ObservableObject {
                     includeItemTypes: [.musicAlbum],
                     sortBy: [.premiereDate],
                     sortOrder: .descending,
+                    fields: [.primaryImageAspectRatio, .childCount],
+                    limit: 50,
                     artistIds: [artistId],
-                    enableUserData: true
+                    enableUserData: true,
+                    enableTotalRecordCount: false
                 )
             )
             albums = result.items
@@ -741,7 +753,8 @@ final class ItemDetailViewModel: ObservableObject {
             let members = try await client.itemsApi.getItems(
                 request: GetItemsRequest(
                     parentId: boxSetId,
-                    limit: 200
+                    limit: 200,
+                    enableTotalRecordCount: false
                 )
             )
             return members.items.contains(where: { $0.id == itemId })
@@ -752,35 +765,26 @@ final class ItemDetailViewModel: ObservableObject {
 
     private func findBoxSetByScanning(itemId: String, client: MediaServerClient) async -> String? {
         do {
-            var startIndex = 0
-            let pageSize = 200
-
-            while true {
-                let page = try await client.itemsApi.getItems(
+            let page = try await client.itemsApi.getItems(
+                request: GetItemsRequest(
+                    recursive: true,
+                    includeItemTypes: [.boxSet],
+                    sortBy: [.sortName],
+                    limit: 40,
+                    enableTotalRecordCount: false
+                )
+            )
+            for boxSet in page.items {
+                let members = try await client.itemsApi.getItems(
                     request: GetItemsRequest(
-                        recursive: true,
-                        includeItemTypes: [.boxSet],
-                        sortBy: [.sortName],
-                        limit: pageSize,
-                        startIndex: startIndex,
-                        enableTotalRecordCount: true
+                        parentId: boxSet.id,
+                        limit: 200,
+                        enableTotalRecordCount: false
                     )
                 )
-
-                for boxSet in page.items {
-                    let members = try await client.itemsApi.getItems(
-                        request: GetItemsRequest(
-                            parentId: boxSet.id,
-                            limit: 200
-                        )
-                    )
-                    if members.items.contains(where: { $0.id == itemId }) {
-                        return boxSet.id
-                    }
+                if members.items.contains(where: { $0.id == itemId }) {
+                    return boxSet.id
                 }
-
-                if page.items.count < pageSize { break }
-                startIndex += page.items.count
             }
         } catch { }
         return nil

@@ -90,7 +90,7 @@ final class SuggestedViewModel: ObservableObject {
                 for (index, movie) in recentMovies.enumerated() {
                     group.addTask {
                         let similarResult = try? await client.itemsApi.getSimilarItems(
-                            itemId: movie.id, limit: 7
+                            itemId: movie.id, limit: 7, fields: nil
                         )
                         guard let similar = similarResult?.items, !similar.isEmpty else { return (index, nil) }
                         return (index, SuggestionRow(id: movie.id, sourceItem: movie, items: similar))

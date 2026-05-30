@@ -160,7 +160,7 @@ final class RowDataSource {
 
             case .similar(let itemId, let limit):
                 let result = try await client.itemsApi.getSimilarItems(
-                    itemId: itemId, limit: limit ?? chunkSize
+                    itemId: itemId, limit: limit ?? chunkSize, fields: nil
                 )
                 items = result.items
                 totalItemCount = result.totalRecordCount
@@ -168,7 +168,7 @@ final class RowDataSource {
 
             case .seasons(let seriesId, let userId):
                 let result = try await client.itemsApi.getSeasons(
-                    seriesId: seriesId, userId: userId
+                    seriesId: seriesId, userId: userId, fields: nil
                 )
                 items = result.items
                 totalItemCount = result.totalRecordCount

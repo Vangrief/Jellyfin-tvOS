@@ -131,6 +131,7 @@ struct FocusableCastCard: View {
                 }
             }
             .frame(width: 200)
+            .contentShape(Rectangle())
         }
         .buttonStyle(CleanButtonStyle())
         .focused($isFocused)

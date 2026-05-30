@@ -65,8 +65,8 @@ protocol ServerItemsApi {
     func getResumeItems(request: GetResumeItemsRequest) async throws -> ItemsResult
     func getLatestMedia(request: GetLatestMediaRequest) async throws -> [ServerItem]
     func getNextUp(request: GetNextUpRequest) async throws -> ItemsResult
-    func getSimilarItems(itemId: String, limit: Int?) async throws -> ItemsResult
-    func getSeasons(seriesId: String, userId: String) async throws -> ItemsResult
+    func getSimilarItems(itemId: String, limit: Int?, fields: [ItemField]?) async throws -> ItemsResult
+    func getSeasons(seriesId: String, userId: String, fields: [ItemField]?) async throws -> ItemsResult
     func getEpisodes(seriesId: String, seasonId: String, userId: String) async throws -> ItemsResult
     func getAncestors(itemId: String) async throws -> [ServerItem]
 }

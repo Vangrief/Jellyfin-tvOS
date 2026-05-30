@@ -712,7 +712,10 @@ struct HomeScreen: View {
             reconcileFocusStateForVisibleRows()
         }
         .onChange(of: sidebarHandoffToken) { _ in
-            guard viewModel.hasFocusableContent else { return }
+            guard viewModel.hasFocusableContent else {
+                DispatchQueue.main.async { resetFocus(in: mainNamespace) }
+                return
+            }
             guard !mediaBarDownHandoffInProgress else {
                 debugLog("sidebar_handoff_skipped", details: "reason=media_bar_down_handoff")
                 return

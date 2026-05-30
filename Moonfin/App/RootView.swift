@@ -135,6 +135,7 @@ struct MainNavigationView: View {
     @State private var preferContentFocusDuringHandoff = false
     @State private var isCurrentDestinationDetails = false
     @State private var contentHandoffResetTask: Task<Void, Never>?
+    @State private var sidebarFocusRequestToken = 0
     @State private var showExitConfirmation = false
     @State private var adminMessage: AdminMessagePayload?
 
@@ -204,6 +205,10 @@ struct MainNavigationView: View {
     private func requestNavbarHomeFocus() {
         guard navbarPosition == .top, shouldShowTopNavbar else { return }
         navbarHomeFocusToken += 1
+    }
+
+    private func requestSidebarFocus() {
+        sidebarFocusRequestToken += 1
     }
 
     var body: some View {
@@ -419,7 +424,8 @@ struct MainNavigationView: View {
                 LeftSidebar(
                     container: container,
                     onMoveToContent: handoffSidebarFocusToContent,
-                    onSidebarEntered: noteSidebarEntered
+                    onSidebarEntered: noteSidebarEntered,
+                    requestFocusToken: sidebarFocusRequestToken
                 )
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .ignoresSafeArea()
@@ -510,7 +516,8 @@ struct MainNavigationView: View {
                 serverId: serverId,
                 autoPlay: autoPlay,
                 sidebarEntryToken: sidebarEntryToken,
-                sidebarHandoffToken: sidebarHandoffToken
+                sidebarHandoffToken: sidebarHandoffToken,
+                onMoveToSidebar: requestSidebarFocus
             )
             .onAppear { isCurrentDestinationDetails = true }
             .onDisappear { isCurrentDestinationDetails = false }
@@ -541,9 +548,18 @@ struct MainNavigationView: View {
         case .liveTvPlayer(let channelId):
             liveTvPlayerDestination(channelId: channelId)
         case .seerrDiscover:
-            SeerrDiscoverView(seerrRepository: container.seerrRepository)
+            SeerrDiscoverView(
+                seerrRepository: container.seerrRepository,
+                sidebarEntryToken: sidebarEntryToken,
+                sidebarHandoffToken: sidebarHandoffToken
+            )
         case .seerrMediaDetails(let itemJson):
-            SeerrMediaDetailsView(itemJson: itemJson, seerrRepository: container.seerrRepository)
+            SeerrMediaDetailsView(
+                itemJson: itemJson,
+                seerrRepository: container.seerrRepository,
+                sidebarEntryToken: sidebarEntryToken,
+                sidebarHandoffToken: sidebarHandoffToken
+            )
         case .seerrPersonDetails(let personId):
             SeerrPersonDetailsView(personId: personId, seerrRepository: container.seerrRepository)
         case .seerrBrowseBy(let filterId, let filterName, let mediaType, let filterType):

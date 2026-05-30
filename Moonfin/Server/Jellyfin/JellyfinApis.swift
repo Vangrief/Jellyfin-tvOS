@@ -165,16 +165,22 @@ struct JellyfinItemsApi: ServerItemsApi {
         return try await client.request("/Shows/NextUp", queryItems: query)
     }
 
-    func getSimilarItems(itemId: String, limit: Int?) async throws -> ItemsResult {
+    func getSimilarItems(itemId: String, limit: Int?, fields: [ItemField]? = nil) async throws -> ItemsResult {
         let query = buildQuery([
             ("UserId", client.userId),
             ("Limit", limit.map(String.init)),
+            ("Fields", fields?.map(\.rawValue).joined(separator: ",")),
+            ("EnableTotalRecordCount", "false"),
         ])
         return try await client.request("/Items/\(itemId)/Similar", queryItems: query)
     }
 
-    func getSeasons(seriesId: String, userId: String) async throws -> ItemsResult {
-        let query = buildQuery([("UserId", userId)])
+    func getSeasons(seriesId: String, userId: String, fields: [ItemField]? = nil) async throws -> ItemsResult {
+        let query = buildQuery([
+            ("UserId", userId),
+            ("Fields", fields?.map(\.rawValue).joined(separator: ",")),
+            ("EnableTotalRecordCount", "false"),
+        ])
         return try await client.request("/Shows/\(seriesId)/Seasons", queryItems: query)
     }
 
