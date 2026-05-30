@@ -89,7 +89,6 @@ struct SettingsScreensaverScreen: View {
 
 struct SettingsScreensaverTimeoutScreen: View {
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var settingsRouter: SettingsRouter
 
     private var current: Int { container.userPreferences[UserPreferences.screensaverTimeout] }
     private let options: [(Int, String)] = [
@@ -102,7 +101,6 @@ struct SettingsScreensaverTimeoutScreen: View {
             ForEach(options, id: \.0) { value, label in
                 Button {
                     container.userPreferences[UserPreferences.screensaverTimeout] = value
-                    settingsRouter.goBack()
                 } label: {
                     ScreensaverOptionContent(label: label, isSelected: current == value)
                 }
@@ -114,7 +112,6 @@ struct SettingsScreensaverTimeoutScreen: View {
 
 struct SettingsScreensaverDimmingScreen: View {
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var settingsRouter: SettingsRouter
 
     private var current: Int { container.userPreferences[UserPreferences.screensaverDimmingLevel] }
     private let options: [Int] = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
@@ -124,7 +121,6 @@ struct SettingsScreensaverDimmingScreen: View {
             ForEach(options, id: \.self) { value in
                 Button {
                     container.userPreferences[UserPreferences.screensaverDimmingLevel] = value
-                    settingsRouter.goBack()
                 } label: {
                     ScreensaverOptionContent(
                         label: value == 0 ? "Off" : "\(value)%",
@@ -139,7 +135,6 @@ struct SettingsScreensaverDimmingScreen: View {
 
 struct SettingsScreensaverAgeRatingScreen: View {
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var settingsRouter: SettingsRouter
 
     private var current: Int { container.userPreferences[UserPreferences.screensaverAgeRatingMax] }
     private let options: [(Int, String)] = [
@@ -153,7 +148,6 @@ struct SettingsScreensaverAgeRatingScreen: View {
             ForEach(options, id: \.0) { value, label in
                 Button {
                     container.userPreferences[UserPreferences.screensaverAgeRatingMax] = value
-                    settingsRouter.goBack()
                 } label: {
                     ScreensaverOptionContent(label: label, isSelected: current == value)
                 }

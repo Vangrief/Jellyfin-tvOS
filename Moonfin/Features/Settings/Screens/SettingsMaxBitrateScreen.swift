@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsMaxBitrateScreen: View {
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var settingsRouter: SettingsRouter
 
     private var current: Int { container.userPreferences[UserPreferences.maxBitrate] }
 
@@ -31,7 +30,6 @@ struct SettingsMaxBitrateScreen: View {
             ForEach(options, id: \.0) { value, label in
                 Button {
                     container.userPreferences[UserPreferences.maxBitrate] = value
-                    settingsRouter.goBack()
                 } label: {
                     RadioOptionContent(label: label, isSelected: current == value)
                 }

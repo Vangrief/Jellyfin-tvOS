@@ -2,7 +2,6 @@ import SwiftUI
 
 struct StillWatchingSettingsScreen: View {
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var settingsRouter: SettingsRouter
 
     private var currentValue: Int {
         container.userPreferences[UserPreferences.stillWatchingThreshold]
@@ -18,7 +17,6 @@ struct StillWatchingSettingsScreen: View {
                     isSelected: currentValue == count
                 ) {
                     container.userPreferences[UserPreferences.stillWatchingThreshold] = count
-                    settingsRouter.goBack()
                 }
             }
         }

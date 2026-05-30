@@ -6,8 +6,6 @@ struct SettingsPickerScreen<T: Hashable & CaseIterable>: View where T.AllCases: 
     let displayName: (T) -> String
     var options: [T]?
 
-    @EnvironmentObject var settingsRouter: SettingsRouter
-
     var body: some View {
         SettingsScreenLayout(title: title) {
             ForEach(options ?? Array(T.allCases), id: \.self) { option in
@@ -16,7 +14,6 @@ struct SettingsPickerScreen<T: Hashable & CaseIterable>: View where T.AllCases: 
                     isSelected: selection == option
                 ) {
                     selection = option
-                    settingsRouter.goBack()
                 }
             }
         }

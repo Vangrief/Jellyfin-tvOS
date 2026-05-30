@@ -3,7 +3,6 @@ import SwiftUI
 struct SettingsMediaSegmentScreen: View {
     let segmentType: MediaSegmentType
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var settingsRouter: SettingsRouter
 
     private var currentAction: MediaSegmentAction {
         let map = MediaSegmentRepositoryImpl.parseActionsString(
@@ -29,7 +28,6 @@ struct SettingsMediaSegmentScreen: View {
                     isSelected: currentAction == action
                 ) {
                     setAction(action)
-                    settingsRouter.goBack()
                 }
             }
         }

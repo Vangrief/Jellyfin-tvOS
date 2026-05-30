@@ -5,7 +5,6 @@ struct SettingsSubtitleColorPickerScreen: View {
     let preference: Preference<SubtitleColor>
 
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var settingsRouter: SettingsRouter
 
     private var current: SubtitleColor {
         container.userPreferences[preference]
@@ -16,7 +15,6 @@ struct SettingsSubtitleColorPickerScreen: View {
             ForEach(SubtitleColor.allCases, id: \.self) { color in
                 Button {
                     container.userPreferences[preference] = color
-                    settingsRouter.goBack()
                 } label: {
                     SubtitleColorOptionContent(
                         color: color,
