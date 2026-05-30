@@ -364,7 +364,11 @@ struct MainNavigationView: View {
                   router.path.isEmpty else { return }
 
             container.inactivityTracker.notifyInteraction()
-            showExitConfirmation = true
+            if container.userPreferences[UserPreferences.confirmExit] {
+                showExitConfirmation = true
+            } else {
+                closeApp()
+            }
         }
     }
 
