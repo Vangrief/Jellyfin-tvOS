@@ -16,6 +16,7 @@ struct ItemDetailsView: View {
     @FocusState private var focusedTrackId: String?
     @FocusState private var focusedEpisodeId: String?
     @State private var showFullBio = false
+    @State private var showFullOverview = false
     @State private var showTrackSelector: TrackSelectorMode?
     @State private var showAddToPlaylist = false
     @State private var showDeleteConfirmation = false
@@ -148,6 +149,9 @@ struct ItemDetailsView: View {
                     playVideo(item: item, positionTicks: ticks)
                 }
             }
+        }
+        .onChange(of: viewModel.item?.id) { _ in
+            showFullOverview = false
         }
         .onChange(of: focusedButton) { newValue in
             focusTrace("focusedButton changed to \(String(describing: newValue))")
@@ -443,7 +447,7 @@ struct ItemDetailsView: View {
                 if item.type == .person, let posterUrl = viewModel.posterUrl(for: item),
                    let url = URL(string: posterUrl) {
                     CachedImage(url: url, contentMode: .fit)
-                    .frame(maxWidth: 360, maxHeight: 540)
+                    .frame(maxWidth: 280, maxHeight: 420)
                         .cornerRadius(RadiusTokens.medium)
                         .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
                 }
@@ -482,10 +486,11 @@ struct ItemDetailsView: View {
                         }
 
                         if let overview = item.overview, !overview.isEmpty {
-                            Text(overview)
-                                .font(.bodySm)
-                                .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
-                                .fixedSize(horizontal: false, vertical: true)
+                            ExpandableBioText(
+                                text: overview,
+                                isExpanded: $showFullOverview,
+                                lineLimit: 4
+                            )
                                 .padding(.top, SpaceTokens.spaceXs)
                         }
                     }
@@ -509,7 +514,7 @@ struct ItemDetailsView: View {
                                 .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
                         } else {
                             CachedImage(url: url, contentMode: .fit)
-                                .frame(maxWidth: 440, maxHeight: isMusic ? 440 : 660)
+                                .frame(maxWidth: 320, maxHeight: isMusic ? 320 : 480)
                                 .cornerRadius(RadiusTokens.medium)
                                 .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
                         }
@@ -529,7 +534,7 @@ struct ItemDetailsView: View {
             if let imageUrlString = viewModel.posterUrl(for: item),
                let url = URL(string: imageUrlString) {
                 CachedImage(url: url, contentMode: .fit)
-                    .frame(width: 460, height: 460)
+                    .frame(width: 340, height: 340)
                     .cornerRadius(RadiusTokens.medium)
                     .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
             }
@@ -562,10 +567,11 @@ struct ItemDetailsView: View {
                 }
 
                 if let overview = item.overview, !overview.isEmpty {
-                    Text(overview)
-                        .font(.bodySm)
-                        .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
-                        .fixedSize(horizontal: false, vertical: true)
+                    ExpandableBioText(
+                        text: overview,
+                        isExpanded: $showFullOverview,
+                        lineLimit: 4
+                    )
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 900)
                         .padding(.top, SpaceTokens.spaceXs)
@@ -587,7 +593,7 @@ struct ItemDetailsView: View {
             if let imageUrlString = viewModel.posterUrl(for: item),
                let url = URL(string: imageUrlString) {
                 CachedImage(url: url, contentMode: .fit)
-                    .frame(width: 440, height: 440)
+                    .frame(width: 320, height: 320)
                     .cornerRadius(RadiusTokens.medium)
                     .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
             }

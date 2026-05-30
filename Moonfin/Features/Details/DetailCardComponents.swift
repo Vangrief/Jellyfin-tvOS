@@ -452,6 +452,7 @@ struct FocusFirstRow<Content: View>: View {
 struct ExpandableBioText: View {
     let text: String
     @Binding var isExpanded: Bool
+    var lineLimit: Int = 6
 
     @EnvironmentObject var theme: MoonfinTheme
     @FocusState private var isFocused: Bool
@@ -464,15 +465,13 @@ struct ExpandableBioText: View {
                 Text(text)
                     .font(.bodyLg)
                     .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
-                    .lineLimit(isExpanded ? nil : 6)
+                    .lineLimit(isExpanded ? nil : lineLimit)
                     .padding(.horizontal, SpaceTokens.spaceSm)
 
-                if !isExpanded {
-                    Text(Strings.pressToExpand)
-                        .font(.captionXs)
-                        .foregroundColor(isFocused ? .white.opacity(0.7) : theme.colorScheme.onBackground.opacity(0.4))
-                        .padding(.horizontal, SpaceTokens.spaceSm)
-                }
+                Text(isExpanded ? Strings.seerrShowLess : Strings.seerrShowMore)
+                    .font(.captionXs)
+                    .foregroundColor(isFocused ? .white.opacity(0.7) : theme.accent)
+                    .padding(.horizontal, SpaceTokens.spaceSm)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, SpaceTokens.spaceSm)
