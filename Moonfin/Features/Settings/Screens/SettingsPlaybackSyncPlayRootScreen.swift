@@ -1,7 +1,12 @@
 import SwiftUI
 
 struct SettingsPlaybackSyncPlayRootScreen: View {
+    @EnvironmentObject var container: AppContainer
     @FocusState private var focusedRoute: SettingsRoute?
+
+    private var supportsSyncPlay: Bool {
+        container.serverRepository.currentServer.value?.serverType.supports(.syncPlay) == true
+    }
 
     var body: some View {
         SettingsScreenLayout(title: "Playback and SyncPlay") {
@@ -37,13 +42,15 @@ struct SettingsPlaybackSyncPlayRootScreen: View {
                 caption: "Next Up, still watching, cinema mode, and queue behavior"
             )
 
-            SettingsNavRow(
-                focusedRoute: $focusedRoute,
-                route: .moonfinSyncPlay,
-                icon: "person.3.fill",
-                heading: "SyncPlay",
-                caption: "Sync settings and group playback"
-            )
+            if supportsSyncPlay {
+                SettingsNavRow(
+                    focusedRoute: $focusedRoute,
+                    route: .moonfinSyncPlay,
+                    icon: "person.3.fill",
+                    heading: "SyncPlay",
+                    caption: "Sync settings and group playback"
+                )
+            }
 
             SettingsNavRow(
                 focusedRoute: $focusedRoute,

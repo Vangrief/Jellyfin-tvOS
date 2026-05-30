@@ -536,6 +536,7 @@ struct ProgramDetailPopup: View {
     let onPlay: () -> Void
     let onRecord: () -> Void
     let onToggleFavorite: () -> Void
+    @EnvironmentObject var container: AppContainer
     @EnvironmentObject var theme: MoonfinTheme
     @Environment(\.dismiss) private var dismiss
 
