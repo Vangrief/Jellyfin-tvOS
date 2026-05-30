@@ -11,37 +11,40 @@ struct SettingsHomeSectionsScreen: View {
 
     var body: some View {
         SettingsScreenLayout(title: "Home Sections") {
-            Divider()
-                .background(theme.colorScheme.listCaption.opacity(0.3))
-                .padding(.vertical, SpaceTokens.spaceXs)
+            ScrollViewReader { proxy in
+                Divider()
+                    .background(theme.colorScheme.listCaption.opacity(0.3))
+                    .padding(.vertical, SpaceTokens.spaceXs)
 
-            Text("Row Configuration")
-                .font(.bodyLg)
-                .fontWeight(.semibold)
-                .foregroundColor(theme.colorScheme.onBackground)
-                .padding(.bottom, SpaceTokens.space2xs)
+                Text("Row Configuration")
+                    .font(.bodyLg)
+                    .fontWeight(.semibold)
+                    .foregroundColor(theme.colorScheme.onBackground)
+                    .padding(.bottom, SpaceTokens.space2xs)
 
-            Text("Use select to toggle a row and left/right to reorder")
-                .font(.caption)
-                .foregroundColor(theme.colorScheme.listCaption)
-                .padding(.bottom, SpaceTokens.space2xs)
+                Text("Use select to toggle a row and left/right to reorder")
+                    .font(.caption)
+                    .foregroundColor(theme.colorScheme.listCaption)
+                    .padding(.bottom, SpaceTokens.space2xs)
 
-            ForEach(Array(sections.enumerated()), id: \.element.id) { index, entry in
-                HomeSectionRow(
-                    entry: entry,
-                    isFirst: index == 0,
-                    isLast: index == sections.count - 1,
-                    onToggle: { toggleSection(at: index) },
-                    onMoveUp: { moveSection(from: index, direction: -1) },
-                    onMoveDown: { moveSection(from: index, direction: 1) }
-                )
+                ForEach(Array(sections.enumerated()), id: \.element.id) { index, entry in
+                    HomeSectionRow(
+                        entry: entry,
+                        isFirst: index == 0,
+                        isLast: index == sections.count - 1,
+                        onToggle: { toggleSection(at: index) },
+                        onMoveUp: { moveSection(from: index, direction: -1, proxy: proxy) },
+                        onMoveDown: { moveSection(from: index, direction: 1, proxy: proxy) }
+                    )
+                    .id(entry.id)
+                }
+
+                Button(action: resetToDefaults) {
+                    FocusAwareActionLabel(icon: "arrow.counterclockwise", text: "Reset To Defaults")
+                }
+                .buttonStyle(CleanButtonStyle())
+                .padding(.top, SpaceTokens.spaceMd)
             }
-
-            Button(action: resetToDefaults) {
-                FocusAwareActionLabel(icon: "arrow.counterclockwise", text: "Reset To Defaults")
-            }
-            .buttonStyle(CleanButtonStyle())
-            .padding(.top, SpaceTokens.spaceMd)
         }
         .onAppear {
             loadSections()
@@ -126,11 +129,18 @@ struct SettingsHomeSectionsScreen: View {
         saveSections()
     }
 
-    private func moveSection(from index: Int, direction: Int) {
+    private func moveSection(from index: Int, direction: Int, proxy: ScrollViewProxy) {
         let target = index + direction
         guard target >= 0 && target < sections.count else { return }
         sections.swapAt(index, target)
         saveSections()
+
+        let movedId = sections[target].id
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                proxy.scrollTo(movedId, anchor: .center)
+            }
+        }
     }
 
     private func resetToDefaults() {
