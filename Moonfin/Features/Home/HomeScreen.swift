@@ -65,6 +65,11 @@ struct HomeScreen: View {
         container.userPreferences[UserPreferences.homeRowsStyle] == .v2
     }
 
+    private var showHomeRowInfoOverlay: Bool {
+        guard !isHomeRowsV2Mode else { return false }
+        return container.userPreferences[UserPreferences.homeRowInfoOverlay]
+    }
+
     private var posterSizePreference: PosterSize {
         container.userPreferences[UserPreferences.homePosterSize]
     }
@@ -586,7 +591,7 @@ struct HomeScreen: View {
                     if !mediaBarPresented {
                         HomeBackdropView(backgroundService: viewModel.backgroundService)
                         gradientOverlay
-                        if !isHomeRowsV2Mode {
+                        if showHomeRowInfoOverlay {
                             HomeInfoAreaView(
                                 infoState: viewModel.infoState,
                                 ratingsViewModel: viewModel.mediaBarRatingsViewModel,
@@ -823,7 +828,8 @@ struct HomeScreen: View {
     }
 
     private func rowsContent(screenHeight: CGFloat) -> some View {
-        let rowsTop = safeDimension(screenHeight * (isHomeRowsV2Mode ? 0.14 : 0.50))
+        let usesCompactTopInset = isHomeRowsV2Mode || !showHomeRowInfoOverlay
+        let rowsTop = safeDimension(screenHeight * (usesCompactTopInset ? 0.14 : 0.50))
         let rowsBottomPadding = safeDimension(screenHeight * (isHomeRowsV2Mode ? 0.70 : 0.48))
 
         return VStack(spacing: 0) {

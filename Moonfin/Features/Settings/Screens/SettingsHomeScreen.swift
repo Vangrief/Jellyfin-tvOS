@@ -7,6 +7,10 @@ struct SettingsHomeScreen: View {
 
     private var prefs: UserPreferences { container.userPreferences }
 
+    private var isClassicRowsStyle: Bool {
+        prefs[UserPreferences.homeRowsStyle] == .v1
+    }
+
     var body: some View {
         SettingsScreenLayout(title: "Home Screen") {
             SettingsListButton(
@@ -26,7 +30,7 @@ struct SettingsHomeScreen: View {
             )
             .focused($focusedRoute, equals: .homeSections)
 
-            if prefs[UserPreferences.homeRowsStyle] == .v1 {
+            if isClassicRowsStyle {
                 SettingsListButton(
                     icon: "photo.on.rectangle",
                     heading: "Per-Row Image Type Selection",
@@ -106,7 +110,7 @@ struct SettingsHomeScreen: View {
                 .focused($focusedRoute, equals: .homeGenresItems)
             }
 
-            if prefs[UserPreferences.homeRowsStyle] == .v1 {
+            if isClassicRowsStyle {
                 SettingsToggleButton(
                     icon: "photo.on.rectangle.angled",
                     heading: "Series Thumbnails",
@@ -124,7 +128,7 @@ struct SettingsHomeScreen: View {
             )
             .focused($focusedRoute, equals: .homePosterSize)
 
-            if prefs[UserPreferences.homeRowsStyle] == .v1 {
+            if isClassicRowsStyle {
                 SettingsToggleButton(
                     icon: "info.circle",
                     heading: "Home Row Info Overlay",
@@ -140,6 +144,7 @@ struct SettingsHomeScreen: View {
                 isOn: prefs.binding(for: UserPreferences.themeMusicOnHomeRows)
             )
         }
+        .id(prefs[UserPreferences.homeRowsStyle])
         .restoresFocus($focusedRoute)
     }
 }
