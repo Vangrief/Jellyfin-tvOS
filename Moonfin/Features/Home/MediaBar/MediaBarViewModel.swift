@@ -6,7 +6,6 @@ final class MediaBarViewModel: ObservableObject {
     @Published private(set) var state: MediaBarState = .loading
     @Published private(set) var currentIndex: Int = 0
     private(set) var isFocused: Bool = false
-    private var isPaused: Bool = false
 
     private let container: AppContainer
     private var autoAdvanceTimer: AnyCancellable?
@@ -129,12 +128,7 @@ final class MediaBarViewModel: ObservableObject {
 
     func setFocused(_ focused: Bool) {
         isFocused = focused
-        isPaused = focused
-        if focused {
-            stopAutoAdvance()
-        } else {
-            startAutoAdvance()
-        }
+        startAutoAdvance()
     }
 
     func cleanup() {
@@ -143,7 +137,6 @@ final class MediaBarViewModel: ObservableObject {
 
     func resume() {
         guard case .ready(let items) = state, items.count > 1 else { return }
-        isPaused = false
         startAutoAdvance()
     }
 
@@ -515,7 +508,6 @@ final class MediaBarViewModel: ObservableObject {
             stopAutoAdvance()
             return
         }
-        guard !isPaused else { return }
         guard case .ready(let items) = state, items.count > 1 else { return }
         stopAutoAdvance()
         let intervalMs = max(1_000, container.userPreferences[UserPreferences.mediaBarIntervalMs])
