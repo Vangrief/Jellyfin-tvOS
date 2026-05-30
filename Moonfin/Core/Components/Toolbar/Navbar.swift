@@ -449,7 +449,7 @@ struct AccountSwitcherDialog: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.78)
+            theme.colorScheme.scrim.opacity(0.78)
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: SpaceTokens.spaceMd) {
@@ -521,7 +521,7 @@ struct AccountSwitcherDialog: View {
             .padding(.vertical, 34)
 
             if isBusy {
-                Color.black.opacity(0.35)
+                theme.colorScheme.scrim.opacity(0.35)
                     .ignoresSafeArea()
 
                 ProgressView()
@@ -639,7 +639,7 @@ private struct AccountSwitcherCardView: View {
                         Text(Strings.accountActiveBadge)
                             .font(.captionXs)
                             .fontWeight(.bold)
-                            .foregroundColor(.black)
+                            .foregroundColor(theme.colorScheme.onButtonFocused)
                             .padding(.horizontal, SpaceTokens.spaceSm)
                             .padding(.vertical, SpaceTokens.space2xs)
                             .background(
@@ -792,18 +792,18 @@ private struct AccountSwitcherActionButton: View {
 
     private var titleColor: Color {
         if isFocused {
-            return .black
+            return isDestructive ? theme.colorScheme.onRecording : theme.colorScheme.onButtonFocused
         }
         return theme.colorScheme.onBackground
     }
 
     private var backgroundColor: Color {
         if isFocused {
-            return isDestructive ? Color(red: 0.85, green: 0.2, blue: 0.2) : Color.white
+            return isDestructive ? theme.colorScheme.recording : theme.colorScheme.buttonFocused
         }
         if isDestructive {
-            return Color(red: 0.78, green: 0.16, blue: 0.16).opacity(0.85)
+            return theme.colorScheme.recording.opacity(0.85)
         }
-        return Color.white.opacity(0.1)
+        return theme.colorScheme.button.opacity(0.1)
     }
 }

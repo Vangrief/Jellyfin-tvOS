@@ -503,7 +503,7 @@ private struct SidebarIconItem: View {
         if let index = cycleIndex, theme.isNeonPulseTheme {
             return theme.navCycleColor(for: index)
         }
-        return .white
+        return theme.colorScheme.onBackground
     }
 
     var body: some View {
@@ -586,7 +586,7 @@ private struct SidebarTextItem: View {
 
                 Text(label)
                     .font(.bodyMd)
-                    .foregroundColor(.white)
+                    .foregroundColor(theme.colorScheme.onBackground)
                     .lineLimit(1)
                     .padding(.vertical, 6)
                     .padding(.horizontal, 8)

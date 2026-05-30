@@ -54,10 +54,10 @@ struct AddToPlaylistDialog: View {
         .frame(width: 600)
         .background(
             RoundedRectangle(cornerRadius: RadiusTokens.large)
-                .fill(Color(white: 0.12).opacity(0.94))
+                .fill(theme.colorScheme.surface.opacity(0.94))
                 .overlay(
                     RoundedRectangle(cornerRadius: RadiusTokens.large)
-                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        .stroke(theme.colorScheme.onBackground.opacity(0.25), lineWidth: 1)
                 )
         )
         .cornerRadius(RadiusTokens.large)
@@ -119,7 +119,7 @@ struct AddToPlaylistDialog: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: RadiusTokens.large)
                         .stroke(
-                            focusedId == "textfield" ? Color.white.opacity(0.9) : Color.white.opacity(0.22),
+                            focusedId == "textfield" ? theme.effectiveFocusColor : theme.colorScheme.onBackground.opacity(0.22),
                             lineWidth: focusedId == "textfield" ? 2 : 1
                         )
                 )
@@ -224,14 +224,14 @@ private struct FocusablePlaylistRow: View {
             .padding(.vertical, SpaceTokens.spaceMd)
             .background(
                 RoundedRectangle(cornerRadius: RadiusTokens.small)
-                    .fill(isFocused ? Color.white.opacity(0.24) : Color.white.opacity(0.08))
+                    .fill(isFocused ? theme.colorScheme.buttonFocused.opacity(0.24) : theme.colorScheme.button.opacity(0.08))
                     .background(
                         RoundedRectangle(cornerRadius: RadiusTokens.small)
                             .fill(.ultraThinMaterial)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: RadiusTokens.small)
-                            .stroke(isFocused ? Color.white.opacity(0.9) : Color.white.opacity(0.22), lineWidth: isFocused ? 2 : 1)
+                            .stroke(isFocused ? theme.effectiveFocusColor : theme.colorScheme.onBackground.opacity(0.22), lineWidth: isFocused ? 2 : 1)
                     )
             )
         }
@@ -253,19 +253,19 @@ struct DetailsGlassDialogButton: View {
             Text(title)
                 .font(.bodyMd)
                 .fontWeight(.medium)
-                .foregroundColor(isFocused ? .white : theme.colorScheme.onBackground)
+                .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused : theme.colorScheme.onBackground)
                 .padding(.horizontal, SpaceTokens.spaceLg)
                 .padding(.vertical, SpaceTokens.spaceSm)
                 .background(
                     RoundedRectangle(cornerRadius: RadiusTokens.small)
-                        .fill(isFocused ? Color.white.opacity(0.26) : Color.white.opacity(0.08))
+                        .fill(isFocused ? theme.colorScheme.buttonFocused.opacity(0.26) : theme.colorScheme.button.opacity(0.08))
                         .background(
                             RoundedRectangle(cornerRadius: RadiusTokens.small)
                                 .fill(.ultraThinMaterial)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: RadiusTokens.small)
-                                .stroke(isFocused ? Color.white.opacity(0.92) : Color.white.opacity(0.24), lineWidth: isFocused ? 2 : 1)
+                                .stroke(isFocused ? theme.effectiveFocusColor : theme.colorScheme.onBackground.opacity(0.24), lineWidth: isFocused ? 2 : 1)
                         )
                 )
                 .opacity(isEnabled ? 1.0 : 0.45)

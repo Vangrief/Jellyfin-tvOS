@@ -244,7 +244,7 @@ struct ItemDetailsView: View {
     private var addToPlaylistOverlay: some View {
         if showAddToPlaylist {
             ZStack {
-                Color.black.opacity(0.8)
+                theme.colorScheme.scrim.opacity(0.8)
                     .ignoresSafeArea()
 
                 AddToPlaylistDialog(
@@ -1032,7 +1032,7 @@ struct ItemDetailsView: View {
                 ForEach(Array(columns.enumerated()), id: \.offset) { index, column in
                     if index > 0 {
                         Rectangle()
-                            .fill(isNeonPulse ? neonPrimary.opacity(0.45) : Color.white.opacity(0.08))
+                            .fill(isNeonPulse ? neonPrimary.opacity(0.45) : theme.colorScheme.onBackground.opacity(0.08))
                             .frame(width: 1, height: 36)
                     }
 
@@ -1053,10 +1053,10 @@ struct ItemDetailsView: View {
             .padding(.vertical, SpaceTokens.spaceMd)
             .background(
                 RoundedRectangle(cornerRadius: RadiusTokens.small)
-                    .fill(Color.white.opacity(0.03))
+                    .fill(theme.colorScheme.surface.opacity(0.28))
                     .overlay(
                         RoundedRectangle(cornerRadius: RadiusTokens.small)
-                            .stroke(isNeonPulse ? neonPrimary.opacity(0.75) : Color.white.opacity(0.06), lineWidth: 1)
+                            .stroke(isNeonPulse ? neonPrimary.opacity(0.75) : theme.colorScheme.onBackground.opacity(0.06), lineWidth: 1)
                     )
             )
         }

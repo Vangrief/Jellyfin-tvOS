@@ -165,7 +165,7 @@ struct ItemCard: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Rectangle()
-                            .fill(Color.black.opacity(0.5))
+                            .fill(theme.colorScheme.scrim.opacity(0.5))
                             .frame(height: 4)
                         Rectangle()
                             .fill(theme.accent)
@@ -210,10 +210,10 @@ struct ItemCard: View {
                         Text("\(count)")
                             .font(.caption2xs)
                             .fontWeight(.bold)
-                            .foregroundColor(.white)
+                            .foregroundColor(theme.colorScheme.onBadge)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(theme.accent)
+                            .background(theme.colorScheme.badge)
                             .clipShape(Capsule())
                             .padding(4)
                     }
@@ -232,10 +232,10 @@ struct ItemCard: View {
                     Spacer()
                     Text(name)
                         .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(theme.colorScheme.onBadge)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
-                        .background(Color.black.opacity(0.7))
+                        .background(theme.colorScheme.scrim.opacity(0.7))
                         .clipShape(Capsule())
                         .padding(4)
                 }

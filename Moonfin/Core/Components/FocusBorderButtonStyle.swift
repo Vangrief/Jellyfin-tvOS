@@ -20,12 +20,12 @@ struct FocusableDialogButton: View {
             Text(title)
                 .font(.bodyMd)
                 .fontWeight(.medium)
-                .foregroundColor(isFocused ? .black : theme.colorScheme.onBackground)
+                .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused : theme.colorScheme.onBackground)
                 .padding(.horizontal, SpaceTokens.spaceLg)
                 .padding(.vertical, SpaceTokens.spaceSm)
                 .background(
                     RoundedRectangle(cornerRadius: RadiusTokens.small)
-                        .fill(isFocused ? Color.white : Color.white.opacity(0.1))
+                        .fill(isFocused ? theme.colorScheme.buttonFocused : theme.colorScheme.button.opacity(0.1))
                 )
         }
         .buttonStyle(CleanButtonStyle())

@@ -12,7 +12,7 @@ struct ProgressBarOverlay: View {
             Spacer()
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(Color.black.opacity(0.5))
+                    .fill(theme.colorScheme.scrim.opacity(0.5))
                     .frame(height: 4)
                 GeometryReader { geo in
                     Rectangle()
@@ -263,21 +263,21 @@ struct FocusableTrackRow: View {
             if let num = track.indexNumber {
                 Text("\(num)")
                     .font(.bodyMd)
-                    .foregroundColor(isFocused ? .black.opacity(0.75) : theme.colorScheme.listCaption)
+                    .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.75) : theme.colorScheme.listCaption)
                     .frame(width: 40, alignment: .trailing)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.name)
                     .font(.bodyMd)
-                    .foregroundColor(isFocused ? .black : theme.colorScheme.onBackground)
+                    .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused : theme.colorScheme.onBackground)
                     .lineLimit(1)
 
                 let artistText = (track.artists?.joined(separator: ", ") ?? track.albumArtist ?? "")
                 if !artistText.isEmpty {
                     Text(artistText)
                         .font(.bodySm)
-                        .foregroundColor(isFocused ? .black.opacity(0.7) : theme.colorScheme.listCaption)
+                        .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.7) : theme.colorScheme.listCaption)
                         .lineLimit(1)
                 }
             }
@@ -287,12 +287,12 @@ struct FocusableTrackRow: View {
             if let ticks = track.runTimeTicks {
                 Text(RuntimeFormatter.format(ticks: ticks))
                     .font(.bodySm)
-                    .foregroundColor(isFocused ? .black.opacity(0.65) : theme.colorScheme.listCaption)
+                    .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.65) : theme.colorScheme.listCaption)
             }
 
             Image(systemName: "chevron.right.2")
                 .font(.bodySm)
-                .foregroundColor(isFocused ? .black.opacity(0.75) : theme.colorScheme.listCaption.opacity(0.75))
+                .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.75) : theme.colorScheme.listCaption.opacity(0.75))
         }
         .padding(.horizontal, SpaceTokens.spaceMd)
         .padding(.vertical, SpaceTokens.spaceSm)
@@ -300,8 +300,8 @@ struct FocusableTrackRow: View {
             RoundedRectangle(cornerRadius: RadiusTokens.small)
                 .fill(
                     isFocused
-                        ? Color.white
-                        : (rowIndex.isMultiple(of: 2) ? Color.clear : Color.white.opacity(0.04))
+                        ? theme.colorScheme.buttonFocused
+                        : (rowIndex.isMultiple(of: 2) ? Color.clear : theme.colorScheme.onBackground.opacity(0.04))
                 )
         )
         .contentShape(Rectangle())
@@ -470,14 +470,14 @@ struct ExpandableBioText: View {
 
                 Text(isExpanded ? Strings.seerrShowLess : Strings.seerrShowMore)
                     .font(.captionXs)
-                    .foregroundColor(isFocused ? .white.opacity(0.7) : theme.accent)
+                    .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.7) : theme.accent)
                     .padding(.horizontal, SpaceTokens.spaceSm)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, SpaceTokens.spaceSm)
             .background(
                 RoundedRectangle(cornerRadius: RadiusTokens.small)
-                    .fill(isFocused ? Color.white.opacity(0.08) : Color.clear)
+                    .fill(isFocused ? theme.colorScheme.buttonFocused.opacity(0.08) : Color.clear)
             )
         }
         .buttonStyle(CleanButtonStyle())

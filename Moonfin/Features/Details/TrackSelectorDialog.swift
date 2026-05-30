@@ -56,7 +56,7 @@ struct TrackSelectorDialog: View {
                     }
 
                     if let onDownloadSubtitles {
-                        Divider().background(Color.white.opacity(0.2))
+                        Divider().background(theme.colorScheme.onBackground.opacity(0.2))
                             .padding(.vertical, SpaceTokens.spaceXs)
 
                         FocusableTrackSelectorRow(
@@ -83,7 +83,7 @@ struct TrackSelectorDialog: View {
                 .fill(.ultraThinMaterial)
                 .overlay(
                     RoundedRectangle(cornerRadius: RadiusTokens.large)
-                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        .stroke(theme.colorScheme.onBackground.opacity(0.25), lineWidth: 1)
                 )
         )
         .cornerRadius(RadiusTokens.large)
@@ -145,14 +145,14 @@ struct FocusableTrackSelectorRow: View {
             .padding(.vertical, SpaceTokens.spaceMd)
             .background(
                 RoundedRectangle(cornerRadius: RadiusTokens.small)
-                    .fill(isFocused ? Color.white.opacity(0.24) : Color.white.opacity(0.08))
+                    .fill(isFocused ? theme.colorScheme.buttonFocused.opacity(0.24) : theme.colorScheme.button.opacity(0.08))
                     .background(
                         RoundedRectangle(cornerRadius: RadiusTokens.small)
                             .fill(.ultraThinMaterial)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: RadiusTokens.small)
-                            .stroke(isFocused ? Color.white.opacity(0.9) : Color.white.opacity(0.22), lineWidth: isFocused ? 2 : 1)
+                            .stroke(isFocused ? theme.effectiveFocusColor : theme.colorScheme.onBackground.opacity(0.22), lineWidth: isFocused ? 2 : 1)
                     )
             )
         }
@@ -209,7 +209,7 @@ struct VersionSelectorDialog: View {
                 .fill(.ultraThinMaterial)
                 .overlay(
                     RoundedRectangle(cornerRadius: RadiusTokens.large)
-                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        .stroke(theme.colorScheme.onBackground.opacity(0.25), lineWidth: 1)
                 )
         )
         .cornerRadius(RadiusTokens.large)

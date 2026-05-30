@@ -22,7 +22,7 @@ struct LibraryCard: View {
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0.3),
-                        .init(color: .black.opacity(0.6), location: 1.0)
+                        .init(color: theme.colorScheme.scrim.opacity(0.6), location: 1.0)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -33,11 +33,11 @@ struct LibraryCard: View {
                     HStack {
                         Image(systemName: libraryIcon)
                             .font(.captionXs)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
                         Text(item.name)
                             .font(.captionXs)
                             .fontWeight(.semibold)
-                            .foregroundColor(.white)
+                            .foregroundColor(theme.colorScheme.onBackground)
                             .lineLimit(1)
                         Spacer()
                     }

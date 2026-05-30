@@ -10,7 +10,7 @@ struct ItemCardOverlays: View {
             if item.userData?.isFavorite ?? false {
                 Image(systemName: "heart.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(Color(hex: 0xFF4757))
+                    .foregroundColor(theme.colorScheme.recording)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .padding(6)
             }
@@ -19,10 +19,10 @@ struct ItemCardOverlays: View {
                 Text("\(count)")
                     .font(.caption2xs)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
+                    .foregroundColor(theme.colorScheme.onBadge)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(theme.accent)
+                    .background(theme.colorScheme.badge)
                     .clipShape(Capsule())
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .padding(6)

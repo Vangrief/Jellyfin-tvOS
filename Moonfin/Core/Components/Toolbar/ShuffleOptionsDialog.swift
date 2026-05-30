@@ -223,7 +223,7 @@ struct ShuffleOptionsDialog: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.78)
+            theme.colorScheme.scrim.opacity(0.78)
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: SpaceTokens.spaceMd) {
@@ -738,7 +738,7 @@ private struct ShufflePosterCard: View {
                 }
 
                 LinearGradient(
-                    colors: [.clear, Color.black.opacity(0.62)],
+                    colors: [.clear, theme.colorScheme.scrim.opacity(0.62)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -749,7 +749,7 @@ private struct ShufflePosterCard: View {
             .clipShape(RoundedRectangle(cornerRadius: RadiusTokens.medium))
             .overlay(
                 RoundedRectangle(cornerRadius: RadiusTokens.medium)
-                    .stroke(isFocused ? theme.effectiveFocusColor : Color.white.opacity(isSelected ? 0.24 : 0.08), lineWidth: isFocused ? 2.5 : 1)
+                    .stroke(isFocused ? theme.effectiveFocusColor : theme.colorScheme.onBackground.opacity(isSelected ? 0.24 : 0.08), lineWidth: isFocused ? 2.5 : 1)
             )
             .shadow(color: isFocused ? theme.effectiveFocusColor.opacity(0.45) : .clear, radius: 14, x: 0, y: 0)
             .scaleEffect(selectionScale * focusScale)
@@ -821,7 +821,7 @@ private struct ShuffleActionCard: View {
 
     private var foregroundColor: Color {
         if isFocused {
-            return .white
+            return theme.colorScheme.onButtonFocused
         }
         return theme.colorScheme.onBackground.opacity(isPrimary ? 0.95 : 0.85)
     }
@@ -866,11 +866,11 @@ private struct ShufflePickerRow: View {
             .frame(maxWidth: .infinity, minHeight: 78)
             .background(
                 RoundedRectangle(cornerRadius: RadiusTokens.medium)
-                    .fill(isFocused ? Color.white.opacity(0.2) : Color.white.opacity(0.06))
+                    .fill(isFocused ? theme.colorScheme.buttonFocused.opacity(0.2) : theme.colorScheme.button.opacity(0.06))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: RadiusTokens.medium)
-                    .stroke(isFocused ? theme.effectiveFocusColor : Color.white.opacity(0.16), lineWidth: isFocused ? 2.2 : 1)
+                    .stroke(isFocused ? theme.effectiveFocusColor : theme.colorScheme.onBackground.opacity(0.16), lineWidth: isFocused ? 2.2 : 1)
             )
             .animation(.easeOut(duration: 0.14), value: isFocused)
         }

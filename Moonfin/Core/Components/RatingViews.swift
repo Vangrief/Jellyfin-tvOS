@@ -45,12 +45,12 @@ private struct BaseRatingChipView<Icon: View>: View {
                 icon
                 Text(valueText)
                     .font(.token(20, weight: .bold))
-                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : .white)
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground)
             }
             if let labelText {
                 Text(labelText)
                     .font(.token(16))
-                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : .white.opacity(0.5))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.5))
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -64,7 +64,7 @@ private struct BaseRatingChipView<Icon: View>: View {
                     .preference(key: RatingChipHeightPreferenceKey.self, value: geometry.size.height)
             }
         )
-        .background(theme.isNeonPulseTheme ? theme.neonSecondaryColor.opacity(0.12) : Color.white.opacity(0.1))
+        .background(theme.isNeonPulseTheme ? theme.neonSecondaryColor.opacity(0.12) : theme.colorScheme.button.opacity(0.1))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(theme.isNeonPulseTheme ? theme.neonPrimaryColor.opacity(0.85) : .clear, lineWidth: 1)
@@ -78,6 +78,8 @@ struct RatingChipView: View {
     let normalizedValue: Float
     let showLabel: Bool
     var sharedHeight: CGFloat? = nil
+
+    @EnvironmentObject var theme: MoonfinTheme
 
     var body: some View {
         let canonicalSource = RatingSource.canonicalSourceRawValue(source)
@@ -96,7 +98,7 @@ struct RatingChipView: View {
             } else {
                 Image(systemName: "tag.fill")
                     .font(.system(size: 24, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(theme.colorScheme.onBackground.opacity(0.9))
             }
         }
     }
@@ -135,12 +137,12 @@ struct CompactRatingChipView: View {
             } else {
                 Image(systemName: "tag.fill")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : .white.opacity(0.7))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.7))
             }
 
             Text(formatted)
                 .font(.token(13, weight: .semibold))
-                .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : .white.opacity(0.7))
+                .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.7))
         }
     }
 }
@@ -164,7 +166,7 @@ struct MediaBarRatingRow: View {
                         .foregroundColor(Color(red: 1, green: 0.84, blue: 0))
                     Text(String(format: "%.1f", value))
                         .font(.token(TypographyTokens.fontSizeXs))
-                        .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : .white)
+                        .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground)
                         .fixedSize()
                 }
             } else {
@@ -179,11 +181,11 @@ struct MediaBarRatingRow: View {
                     } else {
                         Image(systemName: "tag.fill")
                             .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : .white)
+                            .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground)
                     }
                     Text(formatted)
                         .font(.token(TypographyTokens.fontSizeXs))
-                        .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : .white)
+                        .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground)
                         .fixedSize()
                 }
             }

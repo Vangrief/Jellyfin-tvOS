@@ -137,7 +137,6 @@ struct ActionButtonsRow: View {
             label: isPlayed ? Strings.watched : Strings.unwatched,
             icon: "checkmark",
             isActive: isPlayed,
-            activeColor: Color(hex: 0x2196F3),
             action: onToggleWatched
         ))
 
@@ -146,7 +145,6 @@ struct ActionButtonsRow: View {
             label: isFavorite ? Strings.favorited : Strings.favorite,
             icon: isFavorite ? "heart.fill" : "heart",
             isActive: isFavorite,
-            activeColor: Color(hex: 0xFF4757),
             action: onToggleFavorite
         ))
 
@@ -297,7 +295,7 @@ private struct ActionButton: View {
     private var iconColor: Color {
         if theme.isNeonPulseTheme { return alternatingColor }
         if isFocused { return theme.colorScheme.onButtonFocused }
-        if isActive, let activeColor { return activeColor }
+        if isActive { return activeColor ?? theme.accent }
         return theme.colorScheme.onButton
     }
 }

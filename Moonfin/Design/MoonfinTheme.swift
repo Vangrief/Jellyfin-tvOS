@@ -25,6 +25,10 @@ final class MoonfinTheme: ObservableObject {
     var effectiveFocusColor: Color { focusBorder.color }
     var isNeonPulseTheme: Bool { activeSpec.id == ThemeRegistry.neonPulseId }
 
+    private func defaultFocusBorder(for themeId: String) -> FocusBorderColor {
+        themeId == ThemeRegistry.neonPulseId ? .neonPink : .white
+    }
+
     func navCycleColor(for index: Int) -> Color {
         let cycle = activeSpec.navColorCycle
         guard !cycle.isEmpty else { return colorScheme.onButton }
@@ -158,12 +162,20 @@ final class MoonfinTheme: ObservableObject {
             ? ThemeRegistry.shared.resolveById(customId)
             : ThemeRegistry.shared.resolveById(Self.builtInThemeIdFor(builtIn))
 
+        let previousThemeId = activeSpec.id
+        let previousDefaultFocus = defaultFocusBorder(for: previousThemeId)
+        let nextDefaultFocus = defaultFocusBorder(for: resolved.id)
+
         activeThemeId = builtIn
         activeCustomId = hasCustom ? customId : ""
         activeSpec = resolved
         TypographyTokens.fontFamily = resolved.fontFamily
 
-        if !hasStoredFocusBorderAtLaunch && resolved.id == ThemeRegistry.neonPulseId && focusBorder == .white {
+        // Carry forward theme-default focus color when moving between themes, but keep explicit user-picked colors.
+        if focusBorder == previousDefaultFocus && focusBorder != nextDefaultFocus {
+            focusBorder = nextDefaultFocus
+        } else if !hasStoredFocusBorderAtLaunch && resolved.id == ThemeRegistry.neonPulseId && focusBorder == .white {
+            // Backward-compatible bootstrap for older installs that had no stored focus color.
             focusBorder = .neonPink
         }
 
