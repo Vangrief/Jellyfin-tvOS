@@ -38,9 +38,15 @@ final class VideoPlayerViewModel: ObservableObject {
     private let logger = Logger(subsystem: "org.moonfin.appletv", category: "VideoPlayerViewModel")
     private let overlayTimeout: TimeInterval = 5
     private let scrubIdleTimeout: TimeInterval = 3
-    private let endTimeFormatter: DateFormatter = {
+    private static let endTimeTwelveHourFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    private static let endTimeTwentyFourHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
         return f
     }()
 
@@ -123,7 +129,10 @@ final class VideoPlayerViewModel: ObservableObject {
         let remaining = player.duration - current
         guard remaining.isFinite && remaining > 0 else { return "" }
         let endDate = Date().addingTimeInterval(remaining)
-        return "Ends at \(endTimeFormatter.string(from: endDate))"
+        let formatter = playbackManager.use24HourClockPreference
+            ? Self.endTimeTwentyFourHourFormatter
+            : Self.endTimeTwelveHourFormatter
+        return "Ends at \(formatter.string(from: endDate))"
     }
 
     init(

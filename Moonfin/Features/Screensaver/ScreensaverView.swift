@@ -20,6 +20,10 @@ struct ScreensaverView: View {
         container.userPreferences[UserPreferences.screensaverShowClock]
     }
 
+    private var use24HourClock: Bool {
+        container.userPreferences[UserPreferences.use24HourClock]
+    }
+
     private var contentId: String {
         switch viewModel.content {
         case .logo: return "logo"
@@ -44,7 +48,7 @@ struct ScreensaverView: View {
             }
 
             if showClock {
-                BouncingClockView(dimmingLevel: dimmingLevel)
+                BouncingClockView(dimmingLevel: dimmingLevel, use24HourClock: use24HourClock)
             }
 
             Button(action: onDismiss) {
@@ -263,6 +267,7 @@ private struct NowPlayingScreensaverView: View {
 
 private struct BouncingClockView: View {
     let dimmingLevel: Int
+    let use24HourClock: Bool
 
     @State private var currentTime = Date()
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
@@ -271,14 +276,21 @@ private struct BouncingClockView: View {
         1.0 - (Double(dimmingLevel) / 100.0 * 0.7)
     }
 
-    private static let timeFormatter: DateFormatter = {
+    private static let twelveHourFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "h:mm a"
         return f
     }()
 
+    private static let twentyFourHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     private var timeString: String {
-        Self.timeFormatter.string(from: currentTime)
+        let formatter = use24HourClock ? Self.twentyFourHourFormatter : Self.twelveHourFormatter
+        return formatter.string(from: currentTime)
     }
 
     var body: some View {

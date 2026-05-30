@@ -152,8 +152,17 @@ struct LiveTvGuideView: View {
         return f
     }()
 
+    private static let guideTimeTwentyFourHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     private var guideDateLabel: String {
-        "\(Self.guideDateFormatter.string(from: viewModel.guideStartTime))  \(Self.guideTimeFormatter.string(from: viewModel.guideStartTime)) - \(Self.guideTimeFormatter.string(from: viewModel.guideEndTime))"
+        let formatter = container.userPreferences[UserPreferences.use24HourClock]
+            ? Self.guideTimeTwentyFourHourFormatter
+            : Self.guideTimeFormatter
+        return "\(Self.guideDateFormatter.string(from: viewModel.guideStartTime))  \(formatter.string(from: viewModel.guideStartTime)) - \(formatter.string(from: viewModel.guideEndTime))"
     }
 
     private func recommendedGuideHours(for screenWidth: CGFloat) -> Int {
@@ -655,8 +664,17 @@ struct ProgramDetailPopup: View {
         return f
     }()
 
+    private static let timeTwentyFourHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     private func formatTime(_ date: Date) -> String {
-        Self.timeFormatter.string(from: date)
+        let formatter = container.userPreferences[UserPreferences.use24HourClock]
+            ? Self.timeTwentyFourHourFormatter
+            : Self.timeFormatter
+        return formatter.string(from: date)
     }
 }
 

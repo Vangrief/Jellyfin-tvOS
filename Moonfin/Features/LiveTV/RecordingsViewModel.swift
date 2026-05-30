@@ -163,12 +163,20 @@ final class RecordingsViewModel: ObservableObject {
         return f
     }()
 
+    private static let scheduledTimeTwentyFourHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     func formatScheduledTime(_ startDate: Date?, _ endDate: Date?) -> String {
         guard let start = startDate else { return "" }
         let datePart = Self.scheduledDateFormatter.string(from: start)
-        let startTime = Self.scheduledTimeFormatter.string(from: start)
+        let use24HourClock = container.userPreferences[UserPreferences.use24HourClock]
+        let formatter = use24HourClock ? Self.scheduledTimeTwentyFourHourFormatter : Self.scheduledTimeFormatter
+        let startTime = formatter.string(from: start)
         if let end = endDate {
-            let endTime = Self.scheduledTimeFormatter.string(from: end)
+            let endTime = formatter.string(from: end)
             return "\(datePart) \(startTime) - \(endTime)"
         }
         return "\(datePart) \(startTime)"

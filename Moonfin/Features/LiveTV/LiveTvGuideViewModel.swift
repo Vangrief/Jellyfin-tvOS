@@ -257,9 +257,15 @@ final class LiveTvGuideViewModel: ObservableObject {
         return nil
     }
 
-    private static let timeSlotFormatter: DateFormatter = {
+    private static let timeSlotTwelveHourFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    private static let timeSlotTwentyFourHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
         return f
     }()
 
@@ -267,8 +273,10 @@ final class LiveTvGuideViewModel: ObservableObject {
         let cal = Calendar.current
         var slots: [GuideTimeSlot] = []
         var current = guideStartTime
+        let use24HourClock = preferences[UserPreferences.use24HourClock]
+        let formatter = use24HourClock ? Self.timeSlotTwentyFourHourFormatter : Self.timeSlotTwelveHourFormatter
         while current < guideEndTime {
-            slots.append(GuideTimeSlot(date: current, label: Self.timeSlotFormatter.string(from: current)))
+            slots.append(GuideTimeSlot(date: current, label: formatter.string(from: current)))
             current = cal.date(byAdding: .minute, value: 30, to: current) ?? current
         }
         timeSlots = slots

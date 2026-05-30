@@ -157,16 +157,24 @@ final class ItemDetailViewModel: ObservableObject {
         return RuntimeFormatter.format(ticks: ticks)
     }
 
-    private static let endsAtFormatter: DateFormatter = {
+    private static let endsAtTwelveHourFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    private static let endsAtTwentyFourHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
         return f
     }()
 
     var endsAtText: String? {
         guard let ticks = item?.runTimeTicks, ticks > 0 else { return nil }
         let endDate = Date().addingTimeInterval(TimeInterval(ticks) / 10_000_000.0)
-        return Strings.endsAt(Self.endsAtFormatter.string(from: endDate))
+        let use24HourClock = container.userPreferences[UserPreferences.use24HourClock]
+        let formatter = use24HourClock ? Self.endsAtTwentyFourHourFormatter : Self.endsAtTwelveHourFormatter
+        return Strings.endsAt(formatter.string(from: endDate))
     }
 
     private func resetState() {

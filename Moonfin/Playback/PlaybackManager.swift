@@ -160,6 +160,7 @@ final class PlaybackManager: ObservableObject {
     var serverBaseUrl: String? { client.baseURL?.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) }
     var serverAccessToken: String? { client.accessToken }
     var maxBitratePreference: Int { preferences[UserPreferences.maxBitrate] }
+    var use24HourClockPreference: Bool { preferences[UserPreferences.use24HourClock] }
 
     var trickPlayEnabled: Bool {
         preferences[UserPreferences.trickPlayEnabled] && serverType.supports(.trickplay)
