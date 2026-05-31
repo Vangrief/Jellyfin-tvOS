@@ -14,6 +14,7 @@ final class VideoPlayerViewModel: ObservableObject {
     @Published var channelListVisible = false
     @Published var playbackInfoVisible = false
     @Published var subtitleDownloadVisible = false
+    @Published var pauseDescriptionVisible = false
     @Published var subtitleDelay: TimeInterval = 0
     @Published var isScrubbing = false
     @Published var scrubPosition: Float = 0
@@ -60,6 +61,10 @@ final class VideoPlayerViewModel: ObservableObject {
 
     var nextUpBehavior: NextUpBehavior {
         playbackManager.nextUpBehaviorPreference
+    }
+
+    var shouldShowPauseDescription: Bool {
+        playbackManager.showDescriptionOnPausePreference
     }
 
     private var _cachedTitle: String = ""

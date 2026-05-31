@@ -26,127 +26,13 @@ struct VideoPlayerScreen: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-
-            PlaybackSurfaceView(player: viewModel.player)
-                .equatable()
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
-            if isBuffering {
-                bufferingOverlay
-            }
-
-            gestureLayer
-
-            if viewModel.overlayVisible {
-                PlayerOverlayView(viewModel: viewModel)
-                    .focusSection()
-            }
-
-            if viewModel.audioSelectionVisible {
-                trackDialogOverlay {
-                    PlayerAudioTrackDialog(viewModel: viewModel)
-                }
-            }
-
-            if viewModel.subtitleSelectionVisible {
-                trackDialogOverlay {
-                    PlayerSubtitleTrackDialog(viewModel: viewModel)
-                }
-            }
-
-            if viewModel.speedSelectionVisible {
-                trackDialogOverlay {
-                    PlayerSpeedDialog(viewModel: viewModel)
-                }
-            }
-
-            if viewModel.qualitySelectionVisible {
-                trackDialogOverlay {
-                    PlayerQualityDialog(viewModel: viewModel)
-                }
-            }
-
-            if viewModel.chapterSelectionVisible {
-                chapterSelectionOverlay
-                    .focusSection()
-            }
-
-            if viewModel.castListVisible {
-                castListOverlay
-                    .focusSection()
-            }
-
-            if viewModel.channelListVisible {
-                liveTvChannelListOverlay
-                    .focusSection()
-            }
-
-            if viewModel.playbackInfoVisible {
-                trackDialogOverlay {
-                    PlaybackInfoDialog(viewModel: viewModel)
-                }
-            }
-
-            if viewModel.subtitleDownloadVisible {
-                trackDialogOverlay {
-                    SubtitleDownloadDialog(
-                        defaultLanguage: viewModel.playbackManager.currentEntry.flatMap { entry in
-                            let streams = entry.item.mediaSources?.first?.mediaStreams ?? []
-                            return streams.first(where: { $0.type == .subtitle })?.language
-                                ?? streams.first(where: { $0.type == .audio })?.language
-                        } ?? "eng",
-                        onSearch: { lang in try await viewModel.playbackManager.searchRemoteSubtitles(language: lang) },
-                        onDownload: { id in try await viewModel.playbackManager.downloadRemoteSubtitle(subtitleId: id) },
-                        onDismiss: { viewModel.hideSubtitleDownload() },
-                        onDownloaded: { viewModel.hideSubtitleDownload() }
-                    )
-                }
-            }
-
-            if !viewModel.isLiveTV, let action = segmentHandler.activeSkipPrompt {
-                SkipSegmentOverlay(action: action)
-            }
-
-            if viewModel.isLiveTV, viewModel.canJumpToLive {
-                jumpToLiveOverlay
-            }
-
-            if !viewModel.isLiveTV {
-                switch nextUpManager.promptState {
-                case .nextUp(let remaining):
-                    if let nextItem = viewModel.nextQueueItem {
-                        NextUpOverlay(
-                            nextItem: nextItem,
-                            countdown: remaining,
-                            imageUrl: viewModel.nextItemImageUrl,
-                            behavior: viewModel.nextUpBehavior,
-                            onPlayNext: { nextUpManager.confirmPlayNext() },
-                            onClose: { nextUpManager.dismiss() }
-                        )
-                        .focusSection()
-                        .onExitCommand { nextUpManager.dismiss() }
-                    }
-                case .stillWatching:
-                    StillWatchingOverlay(
-                        onContinue: {
-                            nextUpManager.confirmStillWatching()
-                            viewModel.playbackManager.resume()
-                        },
-                        onStop: {
-                            nextUpManager.dismiss()
-                            Task { await viewModel.playbackManager.stop() }
-                            dismiss()
-                        }
-                    )
-                case .hidden:
-                    EmptyView()
-                }
-            }
+            basePlayerLayers
+            interactionAndDialogOverlays
+            playbackPromptOverlays
         }
         .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.3), value: viewModel.overlayVisible)
+        .animation(.easeInOut(duration: 0.25), value: viewModel.pauseDescriptionVisible)
         .animation(.easeInOut(duration: 0.25), value: viewModel.audioSelectionVisible)
         .animation(.easeInOut(duration: 0.25), value: viewModel.subtitleSelectionVisible)
         .animation(.easeInOut(duration: 0.25), value: viewModel.speedSelectionVisible)
@@ -173,13 +59,17 @@ struct VideoPlayerScreen: View {
             case .idle, .opening, .buffering:
                 awaitingFirstFrame = true
             case .playing:
-                break
+                viewModel.pauseDescriptionVisible = false
             case .paused:
                 if viewModel.player.currentTime > 0.1 {
                     awaitingFirstFrame = false
+                    if viewModel.shouldShowPauseDescription {
+                        viewModel.pauseDescriptionVisible = true
+                    }
                 }
             case .stopped, .ended, .error:
                 awaitingFirstFrame = false
+                viewModel.pauseDescriptionVisible = false
             }
         }
         .onChange(of: viewModel.overlayVisible) { visible in
@@ -205,6 +95,146 @@ struct VideoPlayerScreen: View {
         }
         .onChange(of: viewModel.canJumpToLive) { canShow in
             jumpToLiveFocused = canShow
+        }
+    }
+
+    private var basePlayerLayers: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            PlaybackSurfaceView(player: viewModel.player)
+                .equatable()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
+            if isBuffering {
+                bufferingOverlay
+            }
+
+            gestureLayer
+
+            if viewModel.pauseDescriptionVisible,
+               let item = viewModel.playbackManager.currentEntry?.item {
+                PlayerPauseDescriptionOverlay(
+                    title: item.name,
+                    description: item.overview,
+                    mediaType: item.type,
+                    logoUrl: viewModel.logoUrl,
+                    onDismiss: { viewModel.pauseDescriptionVisible = false }
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var interactionAndDialogOverlays: some View {
+        if viewModel.overlayVisible {
+            PlayerOverlayView(viewModel: viewModel)
+                .focusSection()
+        }
+
+        if viewModel.audioSelectionVisible {
+            trackDialogOverlay {
+                PlayerAudioTrackDialog(viewModel: viewModel)
+            }
+        }
+
+        if viewModel.subtitleSelectionVisible {
+            trackDialogOverlay {
+                PlayerSubtitleTrackDialog(viewModel: viewModel)
+            }
+        }
+
+        if viewModel.speedSelectionVisible {
+            trackDialogOverlay {
+                PlayerSpeedDialog(viewModel: viewModel)
+            }
+        }
+
+        if viewModel.qualitySelectionVisible {
+            trackDialogOverlay {
+                PlayerQualityDialog(viewModel: viewModel)
+            }
+        }
+
+        if viewModel.chapterSelectionVisible {
+            chapterSelectionOverlay
+                .focusSection()
+        }
+
+        if viewModel.castListVisible {
+            castListOverlay
+                .focusSection()
+        }
+
+        if viewModel.channelListVisible {
+            liveTvChannelListOverlay
+                .focusSection()
+        }
+
+        if viewModel.playbackInfoVisible {
+            trackDialogOverlay {
+                PlaybackInfoDialog(viewModel: viewModel)
+            }
+        }
+
+        if viewModel.subtitleDownloadVisible {
+            trackDialogOverlay {
+                SubtitleDownloadDialog(
+                    defaultLanguage: viewModel.playbackManager.currentEntry.flatMap { entry in
+                        let streams = entry.item.mediaSources?.first?.mediaStreams ?? []
+                        return streams.first(where: { $0.type == .subtitle })?.language
+                            ?? streams.first(where: { $0.type == .audio })?.language
+                    } ?? "eng",
+                    onSearch: { lang in try await viewModel.playbackManager.searchRemoteSubtitles(language: lang) },
+                    onDownload: { id in try await viewModel.playbackManager.downloadRemoteSubtitle(subtitleId: id) },
+                    onDismiss: { viewModel.hideSubtitleDownload() },
+                    onDownloaded: { viewModel.hideSubtitleDownload() }
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var playbackPromptOverlays: some View {
+        if !viewModel.isLiveTV, let action = segmentHandler.activeSkipPrompt {
+            SkipSegmentOverlay(action: action)
+        }
+
+        if viewModel.isLiveTV, viewModel.canJumpToLive {
+            jumpToLiveOverlay
+        }
+
+        if !viewModel.isLiveTV {
+            switch nextUpManager.promptState {
+            case .nextUp(let remaining):
+                if let nextItem = viewModel.nextQueueItem {
+                    NextUpOverlay(
+                        nextItem: nextItem,
+                        countdown: remaining,
+                        imageUrl: viewModel.nextItemImageUrl,
+                        behavior: viewModel.nextUpBehavior,
+                        onPlayNext: { nextUpManager.confirmPlayNext() },
+                        onClose: { nextUpManager.dismiss() }
+                    )
+                    .focusSection()
+                    .onExitCommand { nextUpManager.dismiss() }
+                }
+            case .stillWatching:
+                StillWatchingOverlay(
+                    onContinue: {
+                        nextUpManager.confirmStillWatching()
+                        viewModel.playbackManager.resume()
+                    },
+                    onStop: {
+                        nextUpManager.dismiss()
+                        Task { await viewModel.playbackManager.stop() }
+                        dismiss()
+                    }
+                )
+            case .hidden:
+                EmptyView()
+            }
         }
     }
 
@@ -376,6 +406,106 @@ struct VideoPlayerScreen: View {
             PlayerLiveTvChannelListOverlayView(viewModel: viewModel)
         }
         .transition(.opacity)
+    }
+}
+
+private struct PlayerPauseDescriptionOverlay: View {
+    let title: String?
+    let description: String?
+    let mediaType: ItemType
+    let logoUrl: String?
+    let onDismiss: () -> Void
+
+    @EnvironmentObject private var theme: MoonfinTheme
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.85)
+                .ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: SpaceTokens.spaceMd) {
+                HStack {
+                    VStack(alignment: .leading, spacing: SpaceTokens.spaceSm) {
+                        if let title, !title.isEmpty {
+                            Text(title)
+                                .font(.titleMd)
+                                .fontWeight(.semibold)
+                                .foregroundColor(theme.colorScheme.onBackground)
+                                .lineLimit(2)
+                        }
+
+                        HStack(spacing: SpaceTokens.spaceSm) {
+                            Text(mediaTypeLabel)
+                                .font(.captionXs)
+                                .foregroundColor(theme.colorScheme.onBackground.opacity(0.6))
+
+                            Text("Paused")
+                                .font(.captionXs)
+                                .foregroundColor(theme.colorScheme.onBackground.opacity(0.6))
+                        }
+                    }
+
+                    Spacer()
+
+                    if let logoUrl, let url = URL(string: logoUrl) {
+                        CachedImage(url: url, contentMode: .fit)
+                            .frame(width: 60, height: 60)
+                            .cornerRadius(RadiusTokens.small)
+                    }
+                }
+
+                if let description, !description.isEmpty {
+                    Divider()
+                        .background(theme.colorScheme.onBackground.opacity(0.2))
+
+                    ScrollView(.vertical, showsIndicators: true) {
+                        Text(description)
+                            .font(.bodyMd)
+                            .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
+                            .lineLimit(nil)
+                    }
+                    .frame(maxHeight: 420)
+                }
+
+                HStack(spacing: SpaceTokens.spaceLg) {
+                    Spacer()
+
+                    Button(action: onDismiss) {
+                        Text("Resume")
+                            .font(.bodyMd)
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, SpaceTokens.spaceLg)
+                            .padding(.vertical, SpaceTokens.spaceMd)
+                            .background(theme.colorScheme.buttonFocused)
+                            .foregroundColor(theme.colorScheme.onButton)
+                            .cornerRadius(RadiusTokens.medium)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(SpaceTokens.spaceLg)
+            .frame(maxWidth: 980, maxHeight: 640)
+        }
+        .transition(.opacity)
+    }
+
+    private var mediaTypeLabel: String {
+        switch mediaType {
+        case .movie: return "Movie"
+        case .series: return "Series"
+        case .episode: return "Episode"
+        case .season: return "Season"
+        case .person: return "Person"
+        case .boxSet: return "Collection"
+        case .book: return "Book"
+        case .musicAlbum: return "Album"
+        case .musicArtist: return "Artist"
+        case .audio: return "Audio"
+        case .playlist: return "Playlist"
+        case .trailer: return "Trailer"
+        case .video: return "Video"
+        default: return "Media"
+        }
     }
 }
 

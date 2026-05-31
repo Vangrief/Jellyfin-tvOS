@@ -162,6 +162,7 @@ final class PlaybackManager: ObservableObject {
     var maxBitratePreference: Int { preferences[UserPreferences.maxBitrate] }
     var use24HourClockPreference: Bool { preferences[UserPreferences.use24HourClock] }
     var nextUpBehaviorPreference: NextUpBehavior { preferences[UserPreferences.nextUpBehavior] }
+    var showDescriptionOnPausePreference: Bool { preferences[UserPreferences.showDescriptionOnPause] }
 
     var trickPlayEnabled: Bool {
         preferences[UserPreferences.trickPlayEnabled] && serverType.supports(.trickplay)
