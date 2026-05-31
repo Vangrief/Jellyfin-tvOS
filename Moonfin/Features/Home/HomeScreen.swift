@@ -423,11 +423,16 @@ struct HomeScreen: View {
             let targetItemId = resolvedItemId(in: targetRow, preferredItemId: lastFocusedItemId)
 
             if targetRow.id != lastFocusedRowId {
-                isRestoringPosition = false
+                isRestoringPosition = true
+                restoreRowFocusTrigger += 1
             }
 
             self.lastFocusedRowId = targetRow.id
             self.lastFocusedItemId = targetItemId
+
+            if focusedRowId == nil {
+                focusedRowId = targetRow.id
+            }
 
             if let targetItemId,
                let itemIndex = targetRow.items.firstIndex(where: { $0.id == targetItemId }) {
