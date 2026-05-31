@@ -19,7 +19,7 @@ struct SettingsAuthServerUserScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Account") {
+        SettingsScreenLayout(title: Strings.settingsAuthServerUserScreenAccount) {
             if let server, let user {
                 userHeader(user, server: server)
 
@@ -32,23 +32,23 @@ struct SettingsAuthServerUserScreen: View {
                         _ = container.authenticationRepository.logout(user: user)
                         settingsRouter.goBack()
                     }) {
-                        FocusAwareActionLabel(icon: "rectangle.portrait.and.arrow.right", text: "Sign Out")
+                        FocusAwareActionLabel(icon: "rectangle.portrait.and.arrow.right", text: Strings.settingsAuthServerUserScreenSignOut)
                     }
                     .buttonStyle(CleanButtonStyle())
                 }
 
                 Button(action: { showDeleteAlert = true }) {
-                    FocusAwareActionLabel(icon: "trash", text: "Remove Account", color: .red)
+                    FocusAwareActionLabel(icon: "trash", text: Strings.settingsAuthServerUserScreenRemoveAccount, color: .red)
                 }
                 .buttonStyle(CleanButtonStyle())
-                .alert("Remove Account", isPresented: $showDeleteAlert) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Remove", role: .destructive) {
+                .alert(Strings.settingsAuthServerUserScreenRemoveAccount, isPresented: $showDeleteAlert) {
+                    Button(Strings.cancel, role: .cancel) {}
+                    Button(Strings.remove, role: .destructive) {
                         container.serverUserRepository.deleteStoredUser(user)
                         settingsRouter.goBack()
                     }
                 } message: {
-                    Text("This will remove \"\(user.name)\" from this device.")
+                    Text(Strings.settingsAuthServerUserScreenRemoveUserFromDevice(user.name))
                 }
             }
         }
@@ -71,18 +71,18 @@ struct SettingsAuthServerUserScreen: View {
                 HStack(spacing: SpaceTokens.space2xs) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 12))
-                    Text("Signed in")
+                    Text(Strings.settingsAuthServerUserScreenSignedIn)
                         .font(.captionXs)
                 }
                 .foregroundColor(theme.accent)
             } else {
-                Text("Not signed in")
+                Text(Strings.settingsAuthServerUserScreenNotSignedIn)
                     .font(.captionXs)
                     .foregroundColor(theme.colorScheme.listCaption)
             }
 
             if let lastUsed = user.lastUsed {
-                Text("Last used \(lastUsed, style: .relative) ago")
+                Text(Strings.lastUsedAgo(lastUsed.formatted(.relative(presentation: .named))))
                     .font(.captionXs)
                     .foregroundColor(theme.colorScheme.listCaption)
             }

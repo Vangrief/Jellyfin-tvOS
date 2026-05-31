@@ -10,7 +10,7 @@ struct SettingsDefaultSubtitleLanguageScreen: View {
     private let options = DefaultSubtitleLanguage.allCases
 
     var body: some View {
-        SettingsScreenLayout(title: "Default Subtitle Language") {
+        SettingsScreenLayout(title: Strings.settingsSubtitleValueScreensDefaultSubtitleLanguage) {
             ForEach(options, id: \.self) { value in
                 Button {
                     container.userPreferences[UserPreferences.defaultSubtitleLanguage] = value
@@ -30,7 +30,7 @@ struct SettingsSubtitleTextSizeScreen: View {
     private let options: [Int] = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32]
 
     var body: some View {
-        SettingsScreenLayout(title: "Text Size") {
+        SettingsScreenLayout(title: Strings.settingsSubtitleValueScreensTextSize) {
             ForEach(options, id: \.self) { value in
                 Button {
                     container.userPreferences[UserPreferences.subtitlesTextSize] = value
@@ -50,7 +50,7 @@ struct SettingsSubtitleOffsetScreen: View {
     private let options: [Int] = [0, 2, 4, 6, 8, 10, 15, 20, 25, 30]
 
     var body: some View {
-        SettingsScreenLayout(title: "Offset Position") {
+        SettingsScreenLayout(title: Strings.settingsSubtitleValueScreensOffsetPosition) {
             ForEach(options, id: \.self) { value in
                 Button {
                     container.userPreferences[UserPreferences.subtitlesOffsetPosition] = value

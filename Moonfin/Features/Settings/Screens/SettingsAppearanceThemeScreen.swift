@@ -17,7 +17,7 @@ struct SettingsAppearanceThemeScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Appearance Theme") {
+        SettingsScreenLayout(title: Strings.settingsAppearanceThemeScreenTitle) {
             ForEach(sortedThemes, id: \.id) { spec in
                 Button {
                     theme.applyThemeById(container.userPreferences, themeId: spec.id)
@@ -58,7 +58,7 @@ struct SettingsAppearanceThemeScreen: View {
         case ThemeRegistry.moonfinId:
             return "Moonfin"
         case ThemeRegistry.neonPulseId:
-            return "Neon Pulse"
+            return Strings.settingsAppearanceThemeScreenNeonPulse
         default:
             return spec.displayName
         }
@@ -67,11 +67,11 @@ struct SettingsAppearanceThemeScreen: View {
     private func subtitle(for spec: ThemeSpec) -> String {
         switch spec.id {
         case ThemeRegistry.moonfinId:
-            return "Default Moonfin appearance"
+            return Strings.settingsAppearanceThemeScreenDefaultSubtitle
         case ThemeRegistry.neonPulseId:
-            return "High-contrast neon style"
+            return Strings.settingsAppearanceThemeScreenNeonSubtitle
         default:
-            return "Custom theme from plugin"
+            return Strings.settingsAppearanceThemeScreenCustomSubtitle
         }
     }
 }

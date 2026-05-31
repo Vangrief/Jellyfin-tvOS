@@ -8,18 +8,18 @@ struct SettingsAudioPreferencesScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Audio Preferences") {
+        SettingsScreenLayout(title: Strings.settingsAudioPreferencesScreenTitle) {
             SettingsToggleButton(
                 icon: "moon.fill",
-                heading: "Night Mode",
-                caption: "Compress dynamic range for quieter playback",
+                heading: Strings.settingsAudioPreferencesScreenNightMode,
+                caption: Strings.settingsAudioPreferencesScreenNightModeCaption,
                 isOn: prefs.binding(for: UserPreferences.audioNightMode)
             )
 
             SettingsListButton(
                 icon: "globe",
-                heading: "Default Audio Language",
-                caption: "Preferred audio language",
+                heading: Strings.settingsAudioPreferencesScreenDefaultAudioLanguage,
+                caption: Strings.settingsAudioPreferencesScreenDefaultAudioLanguageCaption,
                 trailingText: prefs[UserPreferences.defaultAudioLanguage].displayName,
                 action: { settingsRouter.navigate(to: .playbackDefaultAudioLanguage) }
             )
@@ -27,8 +27,8 @@ struct SettingsAudioPreferencesScreen: View {
 
             SettingsListButton(
                 icon: "speaker.wave.2",
-                heading: "Audio Behavior",
-                caption: "Choose how audio output is handled",
+                heading: Strings.settingsAudioPreferencesScreenAudioBehavior,
+                caption: Strings.settingsAudioPreferencesScreenAudioBehaviorCaption,
                 trailingText: prefs[UserPreferences.audioBehavior].displayName,
                 action: { settingsRouter.navigate(to: .playbackAudioBehavior) }
             )
@@ -36,8 +36,8 @@ struct SettingsAudioPreferencesScreen: View {
 
             SettingsListButton(
                 icon: "airplayaudio",
-                heading: "Audio Output",
-                caption: "Direct stream, passthrough, or stereo downmix",
+                heading: Strings.settingsAudioPreferencesScreenAudioOutput,
+                caption: Strings.settingsAudioPreferencesScreenAudioOutputCaption,
                 trailingText: prefs[UserPreferences.audioOutput].displayName,
                 action: { settingsRouter.navigate(to: .playbackAudioOutput) }
             )
@@ -45,15 +45,15 @@ struct SettingsAudioPreferencesScreen: View {
 
             SettingsToggleButton(
                 icon: "speaker",
-                heading: "AC3 Passthrough",
-                caption: "Enable AC3 passthrough",
+                heading: Strings.settingsAudioPreferencesScreenAc3Passthrough,
+                caption: Strings.settingsAudioPreferencesScreenAc3PassthroughCaption,
                 isOn: prefs.binding(for: UserPreferences.ac3Enabled)
             )
 
             SettingsToggleButton(
                 icon: "waveform.path.ecg",
-                heading: "TrueHD Support",
-                caption: "Enable TrueHD support",
+                heading: Strings.settingsAudioPreferencesScreenTrueHdSupport,
+                caption: Strings.settingsAudioPreferencesScreenTrueHdSupportCaption,
                 isOn: prefs.binding(for: UserPreferences.trueHdEnabled)
             )
         }

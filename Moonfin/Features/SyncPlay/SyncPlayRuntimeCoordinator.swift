@@ -131,11 +131,11 @@ final class SyncPlayRuntimeCoordinator {
         case .generalCommand(let name, let arguments):
             routeGeneralCommand(name: name, arguments: arguments)
         case .serverRestarting:
-            syncPlayManager?.handleRealtimeSessionInterrupted(message: "Server is restarting")
+            syncPlayManager?.handleRealtimeSessionInterrupted(message: Strings.syncPlayRuntimeCoordinatorServerRestarting)
         case .serverShuttingDown:
-            syncPlayManager?.handleRealtimeSessionInterrupted(message: "Server is shutting down")
+            syncPlayManager?.handleRealtimeSessionInterrupted(message: Strings.syncPlayRuntimeCoordinatorServerShuttingDown)
         case .sessionEnded:
-            syncPlayManager?.handleRealtimeSessionInterrupted(message: "Session ended")
+            syncPlayManager?.handleRealtimeSessionInterrupted(message: Strings.syncPlayRuntimeCoordinatorSessionEnded)
         default:
             break
         }

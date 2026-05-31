@@ -5,43 +5,43 @@ struct SettingsPersonalizationScreen: View {
     @FocusState private var focusedRoute: SettingsRoute?
 
     var body: some View {
-        SettingsScreenLayout(title: "Personalization") {
+        SettingsScreenLayout(title: Strings.settingsPersonalizationScreenTitle) {
             SettingsListButton(
                 icon: "paintbrush.pointed",
-                heading: "General Style",
-                caption: "Theme, focus, clock, backdrops, and theme music",
+                heading: Strings.settingsPersonalizationScreenGeneralStyle,
+                caption: Strings.settingsPersonalizationScreenGeneralStyleCaption,
                 action: { settingsRouter.navigate(to: .personalizationGeneralStyle) }
             )
             .focused($focusedRoute, equals: .personalizationGeneralStyle)
 
             SettingsListButton(
                 icon: "sidebar.left",
-                heading: "Navigation",
-                caption: "Navbar layout, toolbar buttons, and navigation shortcuts",
+                heading: Strings.settingsPersonalizationScreenNavigation,
+                caption: Strings.settingsPersonalizationScreenNavigationCaption,
                 action: { settingsRouter.navigate(to: .personalizationNavigation) }
             )
             .focused($focusedRoute, equals: .personalizationNavigation)
 
             SettingsListButton(
                 icon: "house",
-                heading: "Home Screen",
-                caption: "Rows, poster size, image type, and home behavior",
+                heading: Strings.settingsPersonalizationScreenHomeScreen,
+                caption: Strings.settingsPersonalizationScreenHomeScreenCaption,
                 action: { settingsRouter.navigate(to: .home) }
             )
             .focused($focusedRoute, equals: .home)
 
             SettingsListButton(
                 icon: "books.vertical",
-                heading: "Libraries",
-                caption: "Library visibility and display settings",
+                heading: Strings.settingsPersonalizationScreenLibraries,
+                caption: Strings.settingsPersonalizationScreenLibrariesCaption,
                 action: { settingsRouter.navigate(to: .libraries) }
             )
             .focused($focusedRoute, equals: .libraries)
 
             SettingsListButton(
                 icon: "sparkles",
-                heading: "Screensaver",
-                caption: "Idle mode, timeout, dimming, and clock options",
+                heading: Strings.screensaver,
+                caption: Strings.settingsPersonalizationScreenScreensaverCaption,
                 action: { settingsRouter.navigate(to: .customizationScreensaver) }
             )
             .focused($focusedRoute, equals: .customizationScreensaver)

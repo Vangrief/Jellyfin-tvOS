@@ -281,7 +281,7 @@ struct VideoPlayerScreen: View {
                     HStack(spacing: SpaceTokens.spaceSm) {
                         Image(systemName: "dot.radiowaves.left.and.right")
                             .font(.bodyLg)
-                        Text("Jump to Live TV")
+                        Text(Strings.playerViewJumpToLiveTv)
                             .font(.bodyLg)
                             .fontWeight(.semibold)
                     }
@@ -442,7 +442,7 @@ private struct PlayerPauseDescriptionOverlay: View {
                                 .font(.captionXs)
                                 .foregroundColor(theme.colorScheme.onBackground.opacity(0.6))
 
-                            Text("Paused")
+                            Text(Strings.playerViewPaused)
                                 .font(.captionXs)
                                 .foregroundColor(theme.colorScheme.onBackground.opacity(0.6))
                         }
@@ -474,7 +474,7 @@ private struct PlayerPauseDescriptionOverlay: View {
                     Spacer()
 
                     Button(action: onDismiss) {
-                        Text("Resume")
+                        Text(Strings.resume)
                             .font(.bodyMd)
                             .fontWeight(.semibold)
                             .padding(.horizontal, SpaceTokens.spaceLg)
@@ -494,20 +494,20 @@ private struct PlayerPauseDescriptionOverlay: View {
 
     private var mediaTypeLabel: String {
         switch mediaType {
-        case .movie: return "Movie"
-        case .series: return "Series"
-        case .episode: return "Episode"
-        case .season: return "Season"
-        case .person: return "Person"
-        case .boxSet: return "Collection"
-        case .book: return "Book"
-        case .musicAlbum: return "Album"
-        case .musicArtist: return "Artist"
-        case .audio: return "Audio"
-        case .playlist: return "Playlist"
-        case .trailer: return "Trailer"
-        case .video: return "Video"
-        default: return "Media"
+        case .movie: return Strings.playerViewMovie
+        case .series: return Strings.playerViewSeries
+        case .episode: return Strings.playerViewEpisode
+        case .season: return Strings.playerViewSeason
+        case .person: return Strings.playerViewPerson
+        case .boxSet: return Strings.playerViewCollection
+        case .book: return Strings.playerViewBook
+        case .musicAlbum: return Strings.playerViewAlbum
+        case .musicArtist: return Strings.playerViewArtist
+        case .audio: return Strings.playerViewAudio
+        case .playlist: return Strings.playerViewPlaylist
+        case .trailer: return Strings.playerViewTrailer
+        case .video: return Strings.playerViewVideo
+        default: return Strings.playerViewMedia
         }
     }
 }

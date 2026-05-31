@@ -6,46 +6,46 @@ struct SettingsLiveTvGuideFiltersScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Guide Filters") {
+        SettingsScreenLayout(title: Strings.liveTvGuideFilters) {
             SettingsToggleButton(
                 icon: "film",
-                heading: "Movies",
-                caption: "Show movies in the guide",
+                heading: Strings.movies,
+                caption: Strings.settingsLiveTvGuideFiltersScreenShowMovies,
                 isOn: prefs.binding(for: UserPreferences.liveTvFilterMovies)
             )
 
             SettingsToggleButton(
                 icon: "tv",
-                heading: "Series",
-                caption: "Show series in the guide",
+                heading: Strings.series,
+                caption: Strings.settingsLiveTvGuideFiltersScreenShowSeries,
                 isOn: prefs.binding(for: UserPreferences.liveTvFilterSeries)
             )
 
             SettingsToggleButton(
                 icon: "newspaper",
-                heading: "News",
-                caption: "Show news programs in the guide",
+                heading: Strings.news,
+                caption: Strings.settingsLiveTvGuideFiltersScreenShowNews,
                 isOn: prefs.binding(for: UserPreferences.liveTvFilterNews)
             )
 
             SettingsToggleButton(
                 icon: "figure.and.child.holdinghands",
-                heading: "Kids",
-                caption: "Show kids programs in the guide",
+                heading: Strings.kids,
+                caption: Strings.settingsLiveTvGuideFiltersScreenShowKids,
                 isOn: prefs.binding(for: UserPreferences.liveTvFilterKids)
             )
 
             SettingsToggleButton(
                 icon: "sportscourt",
-                heading: "Sports",
-                caption: "Show sports in the guide",
+                heading: Strings.sports,
+                caption: Strings.settingsLiveTvGuideFiltersScreenShowSports,
                 isOn: prefs.binding(for: UserPreferences.liveTvFilterSports)
             )
 
             SettingsToggleButton(
                 icon: "star.circle",
-                heading: "Premieres Only",
-                caption: "Show only premiere episodes",
+                heading: Strings.settingsLiveTvGuideFiltersScreenPremieresOnly,
+                caption: Strings.settingsLiveTvGuideFiltersScreenShowPremieres,
                 isOn: prefs.binding(for: UserPreferences.liveTvFilterPremiere)
             )
         }

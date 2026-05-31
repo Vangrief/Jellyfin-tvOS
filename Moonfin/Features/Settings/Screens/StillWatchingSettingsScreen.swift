@@ -10,10 +10,10 @@ struct StillWatchingSettingsScreen: View {
     private let options = [0, 2, 3, 5, 7, 10]
 
     var body: some View {
-        SettingsScreenLayout(title: "Still Watching") {
+        SettingsScreenLayout(title: Strings.stillWatchingSettingsScreenTitle) {
             ForEach(options, id: \.self) { count in
                 StillWatchingOptionRow(
-                    label: count > 0 ? "Every \(count) episodes" : "Disabled",
+                    label: count > 0 ? Strings.stillWatchingSettingsScreenEveryXEpisodes(count) : Strings.disabled,
                     isSelected: currentValue == count
                 ) {
                     container.userPreferences[UserPreferences.stillWatchingThreshold] = count

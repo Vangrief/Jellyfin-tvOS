@@ -137,7 +137,7 @@ struct GenreBrowseScreen: View {
                     .foregroundColor(.white)
                     .lineLimit(1)
 
-                Text("\(genre.itemCount) Items")
+                Text(Strings.itemsCount(genre.itemCount))
                     .font(.bodySm)
                     .foregroundColor(.white.opacity(0.6))
             }
@@ -190,7 +190,7 @@ struct GenreBrowseScreen: View {
 
             Spacer()
 
-            Text("\(viewModel.totalGenres) Genres")
+            Text(Strings.genresCount(viewModel.totalGenres))
                 .font(.system(size: 13))
                 .foregroundColor(.white.opacity(0.45))
         }
@@ -268,7 +268,7 @@ private struct GenreCard: View {
                         .foregroundColor(.white)
                         .lineLimit(1)
 
-                    Text("\(genre.itemCount) Items")
+                    Text(Strings.itemsCount(genre.itemCount))
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.7))
                         .lineLimit(1)

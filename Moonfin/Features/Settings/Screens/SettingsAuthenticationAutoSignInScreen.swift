@@ -10,11 +10,11 @@ struct SettingsAuthenticationAutoSignInScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Auto Sign In") {
+        SettingsScreenLayout(title: Strings.settingsAuthenticationAutoSignInScreenTitle) {
             optionRow(
                 icon: "nosign",
-                heading: "Disabled",
-                caption: "Require sign in every launch",
+                heading: Strings.disabled,
+                caption: Strings.settingsAuthenticationAutoSignInScreenDisabledCaption,
                 isSelected: container.authPreferences.autoLoginBehavior == .disabled,
                 action: {
                     container.authPreferences.autoLoginBehavior = .disabled
@@ -24,8 +24,8 @@ struct SettingsAuthenticationAutoSignInScreen: View {
 
             optionRow(
                 icon: "clock.arrow.circlepath",
-                heading: "Last User",
-                caption: "Automatically sign in with the last signed-in account",
+                heading: Strings.authLastUser,
+                caption: Strings.settingsAuthenticationAutoSignInScreenLastUserCaption,
                 isSelected: container.authPreferences.autoLoginBehavior == .lastUser,
                 action: {
                     container.authPreferences.autoLoginBehavior = .lastUser

@@ -735,7 +735,7 @@ final class HomePluginSectionsService: ObservableObject {
         if released?.enabled != false, releasedMovies?.enabled != false {
             entries.append(Entry(
                 id: "recentlyReleasedMovies",
-                displayText: releasedMovies?.name ?? "Recently Released Movies",
+                displayText: releasedMovies?.name ?? Strings.userViewsServiceRecentlyReleasedMovies,
                 order: releasedMovies?.order ?? 21,
                 spec: [
                     "kind": "recentlyReleasedMovies",
@@ -748,7 +748,7 @@ final class HomePluginSectionsService: ObservableObject {
         if released?.enabled != false, releasedEpisodes?.enabled != false {
             entries.append(Entry(
                 id: "recentlyReleasedEpisodes",
-                displayText: releasedEpisodes?.name ?? "Recently Released Episodes",
+                displayText: releasedEpisodes?.name ?? Strings.userViewsServiceRecentlyReleasedEpisodes,
                 order: releasedEpisodes?.order ?? 22,
                 spec: [
                     "kind": "recentlyReleasedEpisodes",
@@ -761,7 +761,7 @@ final class HomePluginSectionsService: ObservableObject {
         if watchAgain?.enabled != false {
             entries.append(Entry(
                 id: "watchAgain",
-                displayText: watchAgain?.name ?? "Watch Again",
+                displayText: watchAgain?.name ?? Strings.userViewsServiceWatchAgain,
                 order: watchAgain?.order ?? 50,
                 spec: [
                     "kind": "watchAgain",
@@ -787,7 +787,7 @@ final class HomePluginSectionsService: ObservableObject {
             if !libraryIds.isEmpty {
                 entries.append(Entry(
                     id: "recentlyAddedInLibrary",
-                    displayText: "Recently Added",
+                    displayText: Strings.seerrRecentlyAdded,
                     order: 90,
                     spec: [
                         "kind": "recentlyAddedInLibrary",
@@ -843,7 +843,7 @@ final class HomePluginSectionsService: ObservableObject {
                     ?? (entry["itemLimit"] as? NSNumber)?.intValue
                     ?? defaultLimit
                 let order = (entry["order"] as? NSNumber)?.intValue ?? (100 + index)
-                let displayText = (entry["name"] as? String) ?? "Custom"
+                let displayText = (entry["name"] as? String) ?? Strings.userViewsServiceCustomSection
 
                 let explicitId = (entry["id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
                 let fallbackId = "\(type):\(source):\(index)"

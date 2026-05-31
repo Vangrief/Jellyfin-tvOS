@@ -332,14 +332,14 @@ enum HomeRowSortBy: String, StringRepresentableEnum, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .name: return "Name"
-        case .dateAdded: return "Date Added"
-        case .premiereDate: return "Premiere Date"
-        case .rating: return "Rating"
-        case .runtime: return "Runtime"
-        case .random: return "Random"
-        case .criticRating: return "Critic Rating"
-        case .communityRating: return "Community Rating"
+        case .name: return userPreferencesLocalized("lbl_name")
+        case .dateAdded: return userPreferencesLocalized("lbl_date_added")
+        case .premiereDate: return userPreferencesLocalized("lbl_premier_date")
+        case .rating: return userPreferencesLocalized("lbl_rating")
+        case .runtime: return userPreferencesLocalized("lbl_runtime")
+        case .random: return userPreferencesLocalized("random")
+        case .criticRating: return userPreferencesLocalized("lbl_critic_rating")
+        case .communityRating: return userPreferencesLocalized("lbl_community_rating")
         }
     }
 }
@@ -364,8 +364,8 @@ enum HomeRowsStyle: String, StringRepresentableEnum, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .v1: return "Classic"
-        case .v2: return "Modern"
+        case .v1: return userPreferencesLocalized("userpreferences_home_rows_style_classic")
+        case .v2: return userPreferencesLocalized("userpreferences_home_rows_style_modern")
         }
     }
 }
@@ -392,8 +392,8 @@ enum RefreshRateSwitchingBehavior: String, StringRepresentableEnum, CaseIterable
     var displayName: String {
         switch self {
         case .disabled: return userPreferencesLocalized("disabled")
-        case .scaleOnTv: return "Scale on TV"
-        case .scaleOnDevice: return "Scale on Device"
+        case .scaleOnTv: return userPreferencesLocalized("pref_refresh_rate_scale_on_tv")
+        case .scaleOnDevice: return userPreferencesLocalized("pref_refresh_rate_scale_on_device")
         }
     }
 }
@@ -498,10 +498,10 @@ enum PluginCustomizationProfile: String, StringRepresentableEnum, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .global: return "Global"
-        case .desktop: return "Desktop"
-        case .mobile: return "Mobile"
-        case .tv: return "TV"
+        case .global: return userPreferencesLocalized("userpreferences_plugin_profile_global")
+        case .desktop: return userPreferencesLocalized("userpreferences_plugin_profile_desktop")
+        case .mobile: return userPreferencesLocalized("userpreferences_plugin_profile_mobile")
+        case .tv: return userPreferencesLocalized("userpreferences_plugin_profile_tv")
         }
     }
 }
@@ -550,7 +550,7 @@ enum SettingsRatingSource: String, CaseIterable {
     var displayName: String {
         switch self {
         case .tomatoes: return "Rotten Tomatoes"
-        case .tomatoesAudience: return "RT Audience"
+        case .tomatoesAudience: return userPreferencesLocalized("userpreferences_rating_rt_audience")
         case .imdb: return "IMDb"
         case .tmdb: return "TMDB"
         case .metacritic: return "Metacritic"
@@ -560,7 +560,7 @@ enum SettingsRatingSource: String, CaseIterable {
         case .rogerebert: return "Roger Ebert"
         case .myanimelist: return "MyAnimeList"
         case .anilist: return "AniList"
-        case .stars: return "Community Rating"
+        case .stars: return userPreferencesLocalized("lbl_community_rating")
         }
     }
 }
@@ -784,9 +784,9 @@ enum PlaybackQualityProfile: String, StringRepresentableEnum, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .auto: return "Auto"
-        case .compatibility: return "Compatibility"
-        case .highQuality: return "High Quality"
+        case .auto: return userPreferencesLocalized("option_auto")
+        case .compatibility: return userPreferencesLocalized("userpreferences_quality_compatibility")
+        case .highQuality: return userPreferencesLocalized("userpreferences_quality_high")
         }
     }
 
@@ -801,12 +801,12 @@ enum PlaybackQualityProfile: String, StringRepresentableEnum, CaseIterable {
 
     static func autoSummaryDisplayName(for generation: VideoCapabilityDetector.AppleTVGeneration) -> String {
         let recommendedProfile = recommended(for: generation)
-        return "Auto (\(recommendedProfile.displayName) recommended)"
+        return String(format: userPreferencesLocalized("userpreferences_quality_auto_recommended"), recommendedProfile.displayName)
     }
 
     func pickerDisplayName(for generation: VideoCapabilityDetector.AppleTVGeneration) -> String {
         if self == PlaybackQualityProfile.recommended(for: generation) {
-            return "\(displayName) (Recommended)"
+            return String(format: userPreferencesLocalized("userpreferences_quality_picker_recommended"), displayName)
         }
         return displayName
     }

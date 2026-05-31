@@ -120,7 +120,7 @@ struct PlayerOverlayView: View {
         HStack(spacing: 6) {
             Image(systemName: "bolt.fill")
                 .font(.bodySm)
-            Text("LIVE")
+            Text(Strings.liveTvBadgeLive)
                 .font(.bodySm)
                 .fontWeight(.bold)
         }
@@ -420,35 +420,35 @@ struct PlayerOverlayView: View {
     private func tooltipText(for focus: ControlFocus) -> String? {
         switch focus {
         case .playPause:
-            return viewModel.player.isPlaying ? "Pause" : "Play"
+            return viewModel.player.isPlaying ? Strings.pause : Strings.play
         case .rewind:
-            return "Seek Back"
+            return Strings.playerOverlayViewSeekBack
         case .fastForward:
-            return "Seek Forward"
+            return Strings.playerOverlayViewSeekForward
         case .closedCaptions:
-            return "Subtitles"
+            return Strings.subtitlesAction
         case .audioTrack:
-            return "Audio"
+            return Strings.audioAction
         case .previous:
-            return "Previous"
+            return Strings.playerPrevious
         case .next:
-            return "Next"
+            return Strings.playerNext
         case .chapters:
-            return "Chapters"
+            return Strings.chapters
         case .cast:
-            return "Cast & Crew"
+            return Strings.castAndCrew
         case .channels:
-            return "Channels"
+            return Strings.channels
         case .queueNext:
-            return "Queue Next"
+            return Strings.playerOverlayViewQueueNext
         case .speed:
-            return "Playback Speed"
+            return Strings.playbackSpeed
         case .quality:
-            return "Playback Quality"
+            return Strings.playerOverlayViewPlaybackQuality
         case .zoom:
-            return "Zoom Mode"
+            return Strings.playerOverlayViewZoomMode
         case .info:
-            return "Playback Information"
+            return Strings.playerPlaybackInformation
         case .seekbar:
             return nil
         }

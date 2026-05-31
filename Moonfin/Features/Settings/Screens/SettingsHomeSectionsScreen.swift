@@ -10,19 +10,19 @@ struct SettingsHomeSectionsScreen: View {
     @State private var sections: [HomeSectionEntry] = []
 
     var body: some View {
-        SettingsScreenLayout(title: "Home Sections") {
+        SettingsScreenLayout(title: Strings.settingsHomeSectionsScreenTitle) {
             ScrollViewReader { proxy in
                 Divider()
                     .background(theme.colorScheme.listCaption.opacity(0.3))
                     .padding(.vertical, SpaceTokens.spaceXs)
 
-                Text("Row Configuration")
+                Text(Strings.settingsHomeSectionsScreenRowConfiguration)
                     .font(.bodyLg)
                     .fontWeight(.semibold)
                     .foregroundColor(theme.colorScheme.onBackground)
                     .padding(.bottom, SpaceTokens.space2xs)
 
-                Text("Use select to toggle a row and left/right to reorder")
+                Text(Strings.settingsHomeSectionsScreenReorderHint)
                     .font(.caption)
                     .foregroundColor(theme.colorScheme.listCaption)
                     .padding(.bottom, SpaceTokens.space2xs)
@@ -40,7 +40,7 @@ struct SettingsHomeSectionsScreen: View {
                 }
 
                 Button(action: resetToDefaults) {
-                    FocusAwareActionLabel(icon: "arrow.counterclockwise", text: "Reset To Defaults")
+                    FocusAwareActionLabel(icon: "arrow.counterclockwise", text: Strings.settingsHomeSectionsScreenResetToDefaults)
                 }
                 .buttonStyle(CleanButtonStyle())
                 .padding(.top, SpaceTokens.spaceMd)
@@ -66,6 +66,7 @@ struct SettingsHomeSectionsScreen: View {
         }
     }
 
+    @MainActor
     private func loadSections() {
         let sortedConfigs = prefs.homeSectionsConfig.sorted { $0.order < $1.order }
         var seen = Set<HomeSectionType>()
@@ -87,7 +88,7 @@ struct SettingsHomeSectionsScreen: View {
 
             let section = (config.pluginSection ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let displayText = (config.pluginDisplayText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let title = !displayText.isEmpty ? displayText : (!section.isEmpty ? section : "Dynamic Row")
+            let title = !displayText.isEmpty ? displayText : (!section.isEmpty ? section : Strings.settingsHomeSectionsScreenDynamicRow)
 
             result.append(.plugin(
                 config: config,
@@ -198,6 +199,7 @@ struct SettingsHomeSectionsScreen: View {
         }
     }
 
+    @MainActor
     private func pluginSubtitle(for config: HomeSectionConfig) -> String? {
         var parts: [String] = [pluginSourceDisplayName(config.pluginSource)]
 
@@ -208,16 +210,17 @@ struct SettingsHomeSectionsScreen: View {
         return parts.isEmpty ? nil : parts.joined(separator: " • ")
     }
 
+    @MainActor
     private func pluginSourceDisplayName(_ source: HomeSectionPluginSource) -> String {
         switch source {
         case .hss:
-            return "Home Screen Sections"
+            return Strings.settingsIntegrationsScreenHomeScreenSections
         case .kefinTweaks:
             return "Kefin Tweaks"
         case .collections:
-            return "Collections"
+            return Strings.collections
         case .genres:
-            return "Genres"
+            return Strings.genres
         }
     }
 

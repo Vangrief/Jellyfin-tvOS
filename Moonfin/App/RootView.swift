@@ -317,7 +317,7 @@ struct MainNavigationView: View {
         }
         .onAppear {
             container.pluginSyncService.onAdminMessage = { text in
-                adminMessage = AdminMessagePayload(title: "Server Message", message: text)
+                adminMessage = AdminMessagePayload(title: Strings.rootViewServerMessage, message: text)
             }
 
             container.syncPlayRuntimeCoordinator.onDisplayMessage = { header, text in
@@ -325,7 +325,7 @@ struct MainNavigationView: View {
                 guard !trimmedMessage.isEmpty else { return }
 
                 let trimmedHeader = header?.trimmingCharacters(in: .whitespacesAndNewlines)
-                let title = (trimmedHeader?.isEmpty == false ? trimmedHeader : nil) ?? "Server Message"
+                let title = (trimmedHeader?.isEmpty == false ? trimmedHeader : nil) ?? Strings.rootViewServerMessage
                 adminMessage = AdminMessagePayload(title: title, message: trimmedMessage)
             }
 

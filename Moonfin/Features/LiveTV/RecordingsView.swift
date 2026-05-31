@@ -432,9 +432,9 @@ struct RecordingDetailPopup: View {
     private var recordingDetailEpisodeLabel: String? {
         if let sn = recording.parentIndexNumber, let en = recording.indexNumber {
             if let seriesName = recording.seriesName {
-                return "\(seriesName) — S\(sn)E\(en)"
+                return Strings.recordingsViewSeriesEpisodeLabel(seriesName, sn, en)
             }
-            return "S\(sn)E\(en)"
+            return Strings.seasonEpisodeCompact(sn, en)
         }
         return recording.seriesName
     }

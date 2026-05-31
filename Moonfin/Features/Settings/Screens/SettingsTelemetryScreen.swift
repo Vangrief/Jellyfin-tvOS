@@ -4,18 +4,18 @@ struct SettingsTelemetryScreen: View {
     @EnvironmentObject var container: AppContainer
 
     var body: some View {
-        SettingsScreenLayout(title: "Telemetry") {
+        SettingsScreenLayout(title: Strings.settingsTelemetryScreenTitle) {
             SettingsToggleButton(
                 icon: "ladybug",
-                heading: "Send Crash Reports",
-                caption: "Automatically send crash reports to your server",
+                heading: Strings.settingsTelemetryScreenSendCrashReports,
+                caption: Strings.settingsTelemetryScreenSendCrashReportsCaption,
                 isOn: container.telemetryPreferences.binding(for: TelemetryPreferences.crashReportEnabled)
             )
 
             SettingsToggleButton(
                 icon: "doc.text",
-                heading: "Include Logs",
-                caption: "Attach recent app logs to crash reports",
+                heading: Strings.settingsTelemetryScreenIncludeLogs,
+                caption: Strings.settingsTelemetryScreenIncludeLogsCaption,
                 isOn: container.telemetryPreferences.binding(for: TelemetryPreferences.crashReportIncludeLogs)
             )
         }

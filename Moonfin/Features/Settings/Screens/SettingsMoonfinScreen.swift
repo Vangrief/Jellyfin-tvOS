@@ -12,33 +12,33 @@ struct SettingsMoonfinScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Plugin") {
+        SettingsScreenLayout(title: Strings.settingsMoonfinScreenTitle) {
             let _ = refreshTrigger
 
             SettingsToggleButton(
                 icon: "arrow.triangle.2.circlepath",
-                heading: "Server Plugin Sync",
-                caption: "Enable push and pull settings sync with the server plugin",
+                heading: Strings.settingsMoonfinScreenServerPluginSync,
+                caption: Strings.settingsMoonfinScreenServerPluginSyncCaption,
                 isOn: pluginSyncBinding
             )
 
             if profileControlsVisible {
                 SettingsListButton(
                     icon: "person.crop.rectangle.stack",
-                    heading: "Customization Profile",
-                    caption: "Select profile target for sync actions",
+                    heading: Strings.settingsMoonfinScreenCustomizationProfile,
+                    caption: Strings.settingsMoonfinScreenCustomizationProfileCaption,
                     trailingText: prefs[UserPreferences.pluginCustomizationProfile].displayName,
                     action: { settingsRouter.navigate(to: .pluginCustomizationProfile) }
                 )
 
                 SettingsListButton(
                     icon: "icloud.and.arrow.down",
-                    heading: "Load Profile",
-                    caption: "Pull remote profile settings into this device",
+                    heading: Strings.settingsMoonfinScreenLoadProfile,
+                    caption: Strings.settingsMoonfinScreenLoadProfileCaption,
                     action: {
                         Task {
                             await container.pluginSyncService.initialSync()
-                            statusText = "Profile loaded"
+                            statusText = Strings.settingsMoonfinScreenProfileLoaded
                             refreshTrigger += 1
                         }
                     }
@@ -46,12 +46,12 @@ struct SettingsMoonfinScreen: View {
 
                 SettingsListButton(
                     icon: "icloud.and.arrow.up",
-                    heading: "Save Profile",
-                    caption: "Push local settings to the selected profile",
+                    heading: Strings.settingsMoonfinScreenSaveProfile,
+                    caption: Strings.settingsMoonfinScreenSaveProfileCaption,
                     action: {
                         Task {
                             await container.pluginSyncService.syncOnStartup()
-                            statusText = "Profile saved"
+                            statusText = Strings.settingsMoonfinScreenProfileSaved
                             refreshTrigger += 1
                         }
                     }

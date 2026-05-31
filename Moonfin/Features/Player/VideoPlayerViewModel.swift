@@ -143,7 +143,7 @@ final class VideoPlayerViewModel: ObservableObject {
         let formatter = playbackManager.use24HourClockPreference
             ? Self.endTimeTwentyFourHourFormatter
             : Self.endTimeTwelveHourFormatter
-        return "Ends at \(formatter.string(from: endDate))"
+        return Strings.endsAt(formatter.string(from: endDate))
     }
 
     init(
@@ -744,16 +744,16 @@ final class VideoPlayerViewModel: ObservableObject {
         if let language = normalizedSubtitleText(stream.language) {
             return language
         }
-        return "Track \(stream.index)"
+        return Strings.nativePlayerWrapperTrackX(stream.index)
     }
 
     func subtitleDetail(for stream: ServerMediaStream) -> String? {
         var parts: [String] = []
         if stream.isForced {
-            parts.append("Forced")
+            parts.append(Strings.videoPlayerViewModelForced)
         }
         if stream.isExternal {
-            parts.append("External")
+            parts.append(Strings.playerExternal)
         }
         guard !parts.isEmpty else { return nil }
         return parts.joined(separator: " | ")
@@ -787,8 +787,9 @@ final class VideoPlayerViewModel: ObservableObject {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    private static let maxBitrateOptions: [(Int, String)] = [
-        (0, "Auto"),
+    private static var maxBitrateOptions: [(Int, String)] {
+        [
+        (0, Strings.optionAuto),
         (120_000_000, "120 Mbps"),
         (80_000_000, "80 Mbps"),
         (60_000_000, "60 Mbps"),
@@ -805,5 +806,6 @@ final class VideoPlayerViewModel: ObservableObject {
         (1_000_000, "1 Mbps"),
         (700_000, "0.7 Mbps"),
         (420_000, "0.42 Mbps")
-    ]
+        ]
+    }
 }

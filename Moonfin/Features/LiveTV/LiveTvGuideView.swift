@@ -96,7 +96,7 @@ struct LiveTvGuideView: View {
                 .buttonStyle(GuideNavButtonStyle(theme: theme))
 
                 Button(action: { viewModel.goToNow() }) {
-                    Text("Now")
+                    Text(Strings.liveTvGuideViewNow)
                 }
                 .buttonStyle(GuideNavButtonStyle(theme: theme))
 

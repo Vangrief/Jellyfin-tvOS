@@ -6,7 +6,7 @@ struct SettingsLibrariesScreen: View {
     @FocusState private var focusedRoute: SettingsRoute?
 
     var body: some View {
-        SettingsScreenLayout(title: "Libraries") {
+        SettingsScreenLayout(title: Strings.libraries) {
             SettingsListButton(
                 icon: "eye",
                 heading: Strings.settingsLibraryVisibility,
@@ -17,15 +17,15 @@ struct SettingsLibrariesScreen: View {
 
             SettingsToggleButton(
                 icon: "folder",
-                heading: "Enable Folder View",
-                caption: "Show folder browsing mode option",
+                heading: Strings.settingsLibrariesScreenEnableFolderView,
+                caption: Strings.settingsLibrariesScreenEnableFolderViewCaption,
                 isOn: container.userPreferences.binding(for: UserPreferences.enableFolderView)
             )
 
             SettingsToggleButton(
                 icon: "network",
-                heading: "Multi-Server Libraries",
-                caption: "Aggregate libraries from all servers",
+                heading: Strings.settingsLibrariesScreenMultiServerLibraries,
+                caption: Strings.settingsLibrariesScreenMultiServerLibrariesCaption,
                 isOn: container.userPreferences.binding(for: UserPreferences.enableMultiServerLibraries)
             )
         }

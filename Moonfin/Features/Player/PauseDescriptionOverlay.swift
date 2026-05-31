@@ -29,7 +29,7 @@ struct PauseDescriptionOverlay: View {
                                 .font(.captionXs)
                                 .foregroundColor(theme.colorScheme.onBackground.opacity(0.6))
 
-                            Text("Paused")
+                            Text(Strings.pauseDescriptionOverlayPaused)
                                 .font(.captionXs)
                                 .foregroundColor(theme.colorScheme.onBackground.opacity(0.6))
                         }
@@ -61,7 +61,7 @@ struct PauseDescriptionOverlay: View {
                     Spacer()
 
                     Button(action: onDismiss) {
-                        Text("Resume")
+                        Text(Strings.resume)
                             .font(.bodyMd)
                             .fontWeight(.semibold)
                             .padding(.horizontal, SpaceTokens.spaceLg)
@@ -83,20 +83,20 @@ struct PauseDescriptionOverlay: View {
 extension ItemType {
     var displayName: String {
         switch self {
-        case .movie: return "Movie"
-        case .series: return "Series"
-        case .episode: return "Episode"
-        case .season: return "Season"
-        case .person: return "Person"
-        case .boxSet: return "Collection"
-        case .book: return "Book"
-        case .musicAlbum: return "Album"
-        case .musicArtist: return "Artist"
-        case .audio: return "Audio"
-        case .playlist: return "Playlist"
-        case .trailer: return "Trailer"
-        case .video: return "Video"
-        default: return "Media"
+        case .movie: return Strings.pauseDescriptionOverlayMovie
+        case .series: return Strings.series
+        case .episode: return Strings.pauseDescriptionOverlayEpisode
+        case .season: return Strings.pauseDescriptionOverlaySeason
+        case .person: return Strings.pauseDescriptionOverlayPerson
+        case .boxSet: return Strings.collectionSingular
+        case .book: return Strings.pauseDescriptionOverlayBook
+        case .musicAlbum: return Strings.pauseDescriptionOverlayAlbum
+        case .musicArtist: return Strings.artistSingular
+        case .audio: return Strings.pauseDescriptionOverlayAudio
+        case .playlist: return Strings.playlist
+        case .trailer: return Strings.trailer
+        case .video: return Strings.pauseDescriptionOverlayVideo
+        default: return Strings.pauseDescriptionOverlayMedia
         }
     }
 }

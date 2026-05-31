@@ -190,7 +190,7 @@ struct SeerrItemCard: View {
                     .foregroundColor(theme.colorScheme.listHeadline)
                     .lineLimit(1)
                 HStack(spacing: 4) {
-                    Text(item.mediaType == "tv" ? "Series" : "Movie")
+                    Text(item.mediaType == "tv" ? Strings.series : Strings.seerrMovie)
                         .font(.captionXs)
                         .foregroundColor(theme.colorScheme.listCaption)
                     if let year = extractYear(from: item) {
@@ -264,7 +264,7 @@ struct SeerrPosterBadgeOverlay: View {
     @ViewBuilder
     private var mediaTypeBadge: some View {
         if let mediaType = item.mediaType {
-            let text = mediaType == "tv" ? "SERIES" : "MOVIE"
+            let text = mediaType == "tv" ? Strings.seerrDiscoverRowViewSeriesBadge : Strings.seerrDiscoverRowViewMovieBadge
             let backgroundColor = mediaType == "tv" ? Color(hex: 0x8B5CF6) : Color(hex: 0x3B82F6)
 
             Text(text)

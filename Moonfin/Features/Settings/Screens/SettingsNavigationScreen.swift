@@ -8,11 +8,11 @@ struct SettingsNavigationScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Navigation") {
+        SettingsScreenLayout(title: Strings.settingsNavigationScreenNavigation) {
             SettingsListButton(
                 icon: "sidebar.left",
-                heading: "Navigation Style",
-                caption: "Choose top or left navigation",
+                heading: Strings.settingsNavigationScreenNavigationStyle,
+                caption: Strings.settingsNavigationScreenChooseTopOrLeftNavigation,
                 trailingText: prefs[UserPreferences.navbarPosition].displayName,
                 action: { settingsRouter.navigate(to: .moonfinNavbarPosition) }
             )
@@ -20,8 +20,8 @@ struct SettingsNavigationScreen: View {
 
             SettingsListButton(
                 icon: "paintpalette",
-                heading: "Navbar Color",
-                caption: "Choose navbar color",
+                heading: Strings.settingsNavigationScreenNavbarColor,
+                caption: Strings.settingsNavigationScreenChooseNavbarColor,
                 trailingText: prefs[UserPreferences.navbarColor].displayName,
                 action: { settingsRouter.navigate(to: .moonfinNavbarColor) }
             )
@@ -29,8 +29,8 @@ struct SettingsNavigationScreen: View {
 
             SettingsListButton(
                 icon: "circle.lefthalf.filled.inverse",
-                heading: "Navbar Opacity",
-                caption: "Set navbar opacity percentage",
+                heading: Strings.settingsNavigationScreenNavbarOpacity,
+                caption: Strings.settingsNavigationScreenSetNavbarOpacityPercentage,
                 trailingText: "\(prefs[UserPreferences.navbarOpacity])%",
                 action: { settingsRouter.navigate(to: .moonfinNavbarOpacity) }
             )
@@ -38,15 +38,15 @@ struct SettingsNavigationScreen: View {
 
             SettingsToggleButton(
                 icon: "shuffle",
-                heading: "Show Shuffle Button",
-                caption: "Display the shuffle shortcut",
+                heading: Strings.settingsNavigationScreenShowShuffleButton,
+                caption: Strings.settingsNavigationScreenDisplayTheShuffleShortcut,
                 isOn: prefs.binding(for: UserPreferences.showShuffleButton)
             )
 
             SettingsListButton(
                 icon: "shuffle",
-                heading: "Shuffle Content Type Filter",
-                caption: "Restrict shuffle to a content type",
+                heading: Strings.settingsNavigationScreenShuffleContentTypeFilter,
+                caption: Strings.settingsNavigationScreenRestrictShuffleToAContentType,
                 trailingText: prefs[UserPreferences.shuffleContentType].displayName,
                 action: { settingsRouter.navigate(to: .moonfinShuffleContentType) }
             )
@@ -54,22 +54,22 @@ struct SettingsNavigationScreen: View {
 
             SettingsToggleButton(
                 icon: "theatermasks",
-                heading: "Show Genres Button",
-                caption: "Display the genres shortcut",
+                heading: Strings.settingsNavigationScreenShowGenresButton,
+                caption: Strings.settingsNavigationScreenDisplayTheGenresShortcut,
                 isOn: prefs.binding(for: UserPreferences.showGenresButton)
             )
 
             SettingsToggleButton(
                 icon: "heart.fill",
-                heading: "Show Favorites Button",
-                caption: "Display the favorites shortcut",
+                heading: Strings.settingsNavigationScreenShowFavoritesButton,
+                caption: Strings.settingsNavigationScreenDisplayTheFavoritesShortcut,
                 isOn: prefs.binding(for: UserPreferences.showFavoritesButton)
             )
 
             SettingsToggleButton(
                 icon: "movieclapper.fill",
-                heading: "Show Libraries In Toolbar",
-                caption: "Display the libraries shortcut",
+                heading: Strings.settingsNavigationScreenShowLibrariesInToolbar,
+                caption: Strings.settingsNavigationScreenDisplayTheLibrariesShortcut,
                 isOn: prefs.binding(for: UserPreferences.showLibrariesInToolbar)
             )
         }

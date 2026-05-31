@@ -10,10 +10,28 @@ enum MediaSegmentType: String, Codable {
 
     static let supported: [MediaSegmentType] = [.intro, .outro, .preview, .recap, .commercial]
 
-    var displayName: String { rawValue }
+    @MainActor
+    var displayName: String {
+        switch self {
+        case .unknown: return Strings.mediaSegmentModelsTypeUnknown
+        case .commercial: return Strings.mediaSegmentModelsTypeCommercial
+        case .preview: return Strings.mediaSegmentModelsTypePreview
+        case .recap: return Strings.mediaSegmentModelsTypeRecap
+        case .outro: return Strings.mediaSegmentModelsTypeOutro
+        case .intro: return Strings.mediaSegmentModelsTypeIntro
+        }
+    }
 
+    @MainActor
     var skipLabel: String {
-        self == .unknown ? "Skip" : "Skip \(rawValue)"
+        switch self {
+        case .unknown: return Strings.mediaSegmentModelsSkip
+        case .commercial: return Strings.skipCommercial
+        case .preview: return Strings.skipPreview
+        case .recap: return Strings.skipRecap
+        case .outro: return Strings.skipOutro
+        case .intro: return Strings.skipIntro
+        }
     }
 }
 
@@ -22,11 +40,12 @@ enum MediaSegmentAction: String, StringRepresentableEnum, CaseIterable {
     case skip
     case askToSkip
 
+    @MainActor
     var displayName: String {
         switch self {
-        case .nothing: return "Nothing"
-        case .skip: return "Skip"
-        case .askToSkip: return "Ask to Skip"
+        case .nothing: return Strings.mediaSegmentModelsActionNothing
+        case .skip: return Strings.mediaSegmentModelsSkip
+        case .askToSkip: return Strings.mediaSegmentModelsActionAskToSkip
         }
     }
 }

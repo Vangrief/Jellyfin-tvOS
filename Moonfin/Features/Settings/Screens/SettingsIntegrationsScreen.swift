@@ -4,37 +4,37 @@ struct SettingsIntegrationsScreen: View {
     @FocusState private var focusedRoute: SettingsRoute?
 
     var body: some View {
-        SettingsScreenLayout(title: "Integrations") {
+        SettingsScreenLayout(title: Strings.integrations) {
             SettingsNavRow(
                 focusedRoute: $focusedRoute,
                 route: .plugin,
                 icon: "puzzlepiece.extension",
-                heading: "Plugin",
-                caption: "Plugin sync status and settings"
+                heading: Strings.plugin,
+                caption: Strings.settingsIntegrationsScreenPluginCaption
             )
 
             SettingsNavRow(
                 focusedRoute: $focusedRoute,
                 route: .integrationsMetadataRatings,
                 icon: "star.fill",
-                heading: "Metadata and Ratings",
-                caption: "Additional rating provider settings"
+                heading: Strings.settingsIntegrationsScreenMetadataAndRatings,
+                caption: Strings.settingsIntegrationsScreenMetadataAndRatingsCaption
             )
 
             SettingsNavRow(
                 focusedRoute: $focusedRoute,
                 route: .seerr,
                 icon: "asset:settings-seerr",
-                heading: "Seerr",
-                caption: "Seerr integration settings"
+                heading: Strings.seerrTitle,
+                caption: Strings.settingsIntegrationsScreenSeerrCaption
             )
 
             SettingsNavRow(
                 focusedRoute: $focusedRoute,
                 route: .integrationsHomeScreenSections,
                 icon: "asset:settings-hss",
-                heading: "Home Screen Sections",
-                caption: "Integration status and linked sections"
+                heading: Strings.settingsIntegrationsScreenHomeScreenSections,
+                caption: Strings.settingsIntegrationsScreenHomeScreenSectionsCaption
             )
         }
         .restoresFocus($focusedRoute)
@@ -54,61 +54,61 @@ struct SettingsHomeScreenSectionsIntegrationScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Home Screen Sections") {
+        SettingsScreenLayout(title: Strings.settingsIntegrationsScreenHomeScreenSections) {
             let _ = refreshTrigger
 
             HomeSectionsStatusRow(
                 icon: "server.rack",
-                heading: "Active Server",
+                heading: Strings.settingsIntegrationsScreenActiveServer,
                 caption: activeServerAddress,
                 value: activeServerName
             )
 
             HomeSectionsStatusRow(
                 icon: "puzzlepiece.extension",
-                heading: "Plugin Status",
-                caption: "Detected from plugin and meta probes",
+                heading: Strings.settingsIntegrationsScreenPluginStatus,
+                caption: Strings.settingsIntegrationsScreenPluginStatusCaption,
                 value: pluginStatusText
             )
 
             HomeSectionsStatusRow(
                 icon: "number",
-                heading: "Discovered Sections",
-                caption: "Rows discovered for the active server",
+                heading: Strings.settingsIntegrationsScreenDiscoveredSections,
+                caption: Strings.settingsIntegrationsScreenDiscoveredSectionsCaption,
                 value: "\(capability?.sections.count ?? 0)"
             )
 
             HomeSectionsStatusRow(
                 icon: "tag",
-                heading: "Plugin Version",
-                caption: "Reported by installed plugins API",
-                value: capability?.pluginVersion ?? "Unknown"
+                heading: Strings.settingsIntegrationsScreenPluginVersion,
+                caption: Strings.settingsIntegrationsScreenPluginVersionCaption,
+                value: capability?.pluginVersion ?? Strings.unknown
             )
 
             HomeSectionsStatusRow(
                 icon: "clock",
-                heading: "Last Updated",
-                caption: "Latest capability refresh time",
+                heading: Strings.settingsIntegrationsScreenLastUpdated,
+                caption: Strings.settingsIntegrationsScreenLastUpdatedCaption,
                 value: formattedLastUpdated
             )
 
             if let errorText = capability?.lastErrorDescription, !errorText.isEmpty {
                 HomeSectionsStatusRow(
                     icon: "exclamationmark.triangle",
-                    heading: "Last Error",
-                    caption: "Most recent probe error",
+                    heading: Strings.settingsIntegrationsScreenLastError,
+                    caption: Strings.settingsIntegrationsScreenLastErrorCaption,
                     value: errorText
                 )
             }
 
             SettingsListButton(
                 icon: "arrow.clockwise",
-                heading: "Refresh Status",
-                caption: "Re-run capability and section discovery now",
+                heading: Strings.settingsIntegrationsScreenRefreshStatus,
+                caption: Strings.settingsIntegrationsScreenRefreshStatusCaption,
                 action: {
                     Task {
                         await container.homeScreenSectionsService.refreshActiveServerNow()
-                        statusText = "Status refreshed"
+                        statusText = Strings.settingsIntegrationsScreenStatusRefreshed
                         refreshTrigger += 1
                     }
                 }
@@ -118,8 +118,8 @@ struct SettingsHomeScreenSectionsIntegrationScreen: View {
                 focusedRoute: $focusedRoute,
                 route: .homeSections,
                 icon: "list.bullet",
-                heading: "Manage Home Sections",
-                caption: "Open row enablement and ordering"
+                heading: Strings.settingsIntegrationsScreenManageHomeSections,
+                caption: Strings.settingsIntegrationsScreenManageHomeSectionsCaption
             )
 
             if let statusText {
@@ -142,7 +142,7 @@ struct SettingsHomeScreenSectionsIntegrationScreen: View {
     }
 
     private var activeServerName: String {
-        container.serverRepository.currentServer.value?.name ?? "Not Connected"
+        container.serverRepository.currentServer.value?.name ?? Strings.settingsIntegrationsScreenNotConnected
     }
 
     private var activeServerAddress: String? {
@@ -150,13 +150,13 @@ struct SettingsHomeScreenSectionsIntegrationScreen: View {
     }
 
     private var pluginStatusText: String {
-        guard let capability else { return "Unknown" }
-        if !capability.installed { return "Not Installed" }
-        return capability.enabled ? "Installed, Enabled" : "Installed, Disabled"
+        guard let capability else { return Strings.unknown }
+        if !capability.installed { return Strings.settingsIntegrationsScreenNotInstalled }
+        return capability.enabled ? Strings.settingsIntegrationsScreenInstalledEnabled : Strings.settingsIntegrationsScreenInstalledDisabled
     }
 
     private var formattedLastUpdated: String {
-        guard let updatedAt = capability?.lastUpdatedAt else { return "Never" }
+        guard let updatedAt = capability?.lastUpdatedAt else { return Strings.never }
         return Self.dateFormatter.string(from: updatedAt)
     }
 

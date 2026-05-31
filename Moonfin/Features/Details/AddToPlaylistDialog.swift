@@ -23,7 +23,7 @@ struct AddToPlaylistDialog: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(showCreateNew ? "New Playlist" : "Add to Playlist")
+            Text(showCreateNew ? Strings.addToPlaylistDialogNewPlaylist : Strings.addToPlaylist)
                 .font(.title2xl)
                 .foregroundColor(theme.colorScheme.onBackground)
                 .padding(.horizontal, SpaceTokens.spaceLg)
@@ -105,7 +105,7 @@ struct AddToPlaylistDialog: View {
 
     private var createNewView: some View {
         VStack(spacing: SpaceTokens.spaceMd) {
-            TextField("Playlist Name", text: $newPlaylistName)
+            TextField(Strings.addToPlaylistDialogPlaylistName, text: $newPlaylistName)
                 .focused($focusedId, equals: "textfield")
                 .textFieldStyle(.plain)
                 .font(.bodyMd)
@@ -126,13 +126,13 @@ struct AddToPlaylistDialog: View {
                 .padding(.horizontal, SpaceTokens.spaceLg)
 
             HStack(spacing: SpaceTokens.spaceMd) {
-                DetailsGlassDialogButton(title: "Back") {
+                DetailsGlassDialogButton(title: Strings.back) {
                     showCreateNew = false
                     newPlaylistName = ""
                     focusedId = "create"
                 }
 
-                DetailsGlassDialogButton(title: "Create") {
+                DetailsGlassDialogButton(title: Strings.create) {
                     createNewPlaylist()
                 }
                 .disabled(newPlaylistName.trimmingCharacters(in: .whitespaces).isEmpty)

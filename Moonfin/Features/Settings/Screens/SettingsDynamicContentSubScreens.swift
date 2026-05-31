@@ -6,25 +6,25 @@ struct SettingsDynamicLocalPreviewsScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Local Previews") {
+        SettingsScreenLayout(title: Strings.settingsDynamicContentSubScreensLocalPreviews) {
             SettingsToggleButton(
                 icon: "play.rectangle.on.rectangle",
-                heading: "Trailer Preview",
-                caption: "Automatically play trailer previews",
+                heading: Strings.settingsDynamicContentSubScreensTrailerPreview,
+                caption: Strings.settingsDynamicContentSubScreensTrailerPreviewCaption,
                 isOn: prefs.binding(for: UserPreferences.mediaBarTrailerPreview)
             )
 
             SettingsToggleButton(
                 icon: "tv",
-                heading: "Media Preview",
-                caption: "Enable media previews in browse surfaces",
+                heading: Strings.settingsDynamicContentSubScreensMediaPreview,
+                caption: Strings.settingsDynamicContentSubScreensMediaPreviewCaption,
                 isOn: prefs.binding(for: UserPreferences.mediaPreviewEnabled)
             )
 
             SettingsToggleButton(
                 icon: "speaker.wave.2",
-                heading: "Preview Audio",
-                caption: "Enable audio while previews are playing",
+                heading: Strings.settingsDynamicContentSubScreensPreviewAudio,
+                caption: Strings.settingsDynamicContentSubScreensPreviewAudioCaption,
                 isOn: prefs.binding(for: UserPreferences.previewAudioEnabled)
             )
         }
@@ -39,11 +39,11 @@ struct SettingsDynamicSeasonalEffectsScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Seasonal Effects") {
+        SettingsScreenLayout(title: Strings.settingsDynamicContentSubScreensSeasonalEffects) {
             SettingsListButton(
                 icon: "sparkles",
-                heading: "Seasonal Surprise",
-                caption: "Select seasonal visual overlay effect",
+                heading: Strings.settingsDynamicContentSubScreensSeasonalSurprise,
+                caption: Strings.settingsDynamicContentSubScreensSeasonalSurpriseCaption,
                 trailingText: prefs[UserPreferences.seasonalSurprise].displayName,
                 action: { settingsRouter.navigate(to: .moonfinSeasonalSurprise) }
             )

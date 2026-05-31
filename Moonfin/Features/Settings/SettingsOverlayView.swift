@@ -139,7 +139,7 @@ private struct SettingsRouteResolver: View {
             SettingsAuthenticationScreen()
         case .authenticationSortBy:
             SettingsPickerScreen(
-                title: "Sort Servers By",
+                title: Strings.settingsOverlayViewSortServersBy,
                 selection: Binding(
                     get: { container.authPreferences.sortBy },
                     set: { container.authPreferences.sortBy = $0 }
@@ -162,7 +162,7 @@ private struct SettingsRouteResolver: View {
             SettingsAppearanceSavedThemesScreen()
         case .customizationFocusBorder:
             SettingsPickerScreen(
-                title: "Focus Border Color",
+                title: Strings.settingsOverlayViewFocusBorderColor,
                 selection: Binding(
                     get: { theme.focusBorder },
                     set: { theme.focusBorder = $0 }
@@ -171,13 +171,13 @@ private struct SettingsRouteResolver: View {
             )
         case .customizationClock:
             SettingsPickerScreen(
-                title: "Clock",
+                title: Strings.settingsOverlayViewClock,
                 selection: container.userPreferences.binding(for: UserPreferences.clockBehavior),
                 displayName: \.displayName
             )
         case .customizationWatchedIndicator:
             SettingsPickerScreen(
-                title: "Watched Indicator",
+                title: Strings.settingsOverlayViewWatchedIndicator,
                 selection: container.userPreferences.binding(for: UserPreferences.watchedIndicator),
                 displayName: \.displayName
             )
@@ -187,17 +187,17 @@ private struct SettingsRouteResolver: View {
             SettingsDefaultSubtitleLanguageScreen()
         case .customizationSubtitlesTextColor:
             SettingsSubtitleColorPickerScreen(
-                title: "Text Color",
+                title: Strings.settingsOverlayViewTextColor,
                 preference: UserPreferences.subtitlesTextColor
             )
         case .customizationSubtitlesBackgroundColor:
             SettingsSubtitleColorPickerScreen(
-                title: "Background Color",
+                title: Strings.settingsOverlayViewBackgroundColor,
                 preference: UserPreferences.subtitlesBackgroundColor
             )
         case .customizationSubtitlesEdgeColor:
             SettingsSubtitleColorPickerScreen(
-                title: "Edge Color",
+                title: Strings.settingsOverlayViewEdgeColor,
                 preference: UserPreferences.subtitlesStrokeColor
             )
         case .customizationSubtitlesTextSize:
@@ -208,7 +208,7 @@ private struct SettingsRouteResolver: View {
             SettingsScreensaverScreen()
         case .customizationScreensaverMode:
             SettingsPickerScreen(
-                title: "Screensaver Mode",
+                title: Strings.settingsOverlayViewScreensaverMode,
                 selection: container.userPreferences.binding(for: UserPreferences.screensaverMode),
                 displayName: \.displayName
             )
@@ -224,37 +224,37 @@ private struct SettingsRouteResolver: View {
             SettingsHomeSectionsScreen()
         case .homePosterSize:
             SettingsPickerScreen(
-                title: "Poster Size",
+                title: Strings.settingsPosterSize,
                 selection: container.userPreferences.binding(for: UserPreferences.homePosterSize),
                 displayName: \.displayName
             )
         case .homeRowsStyle:
             SettingsPickerScreen(
-                title: "Home Row Style",
+                title: Strings.settingsOverlayViewHomeRowStyle,
                 selection: container.userPreferences.binding(for: UserPreferences.homeRowsStyle),
                 displayName: \.displayName
             )
         case .homeFavoritesSortBy:
             SettingsPickerScreen(
-                title: "Favorites Row Sorting",
+                title: Strings.settingsOverlayViewFavoritesRowSorting,
                 selection: container.userPreferences.binding(for: UserPreferences.favoritesRowSortBy),
                 displayName: \.displayName
             )
         case .homeCollectionsSortBy:
             SettingsPickerScreen(
-                title: "Collections Row Sorting",
+                title: Strings.settingsOverlayViewCollectionsRowSorting,
                 selection: container.userPreferences.binding(for: UserPreferences.collectionsRowSortBy),
                 displayName: \.displayName
             )
         case .homeGenresSortBy:
             SettingsPickerScreen(
-                title: "Genres Row Sorting",
+                title: Strings.settingsOverlayViewGenresRowSorting,
                 selection: container.userPreferences.binding(for: UserPreferences.genresRowSortBy),
                 displayName: \.displayName
             )
         case .homeGenresItems:
             SettingsPickerScreen(
-                title: "Genres Row Items",
+                title: Strings.settingsOverlayViewGenresRowItems,
                 selection: container.userPreferences.binding(for: UserPreferences.genresRowItems),
                 displayName: \.displayName
             )
@@ -262,35 +262,35 @@ private struct SettingsRouteResolver: View {
             SettingsHomeImageTypeScreen()
         case .homeImageTypeContinueWatching:
             SettingsPickerScreen(
-                title: "Continue Watching",
+                title: Strings.settingsOverlayViewContinueWatching,
                 selection: container.userPreferences.binding(for: UserPreferences.homeImageTypeContinueWatching),
                 displayName: \.displayName,
                 options: ImageDisplayType.homeRowOptions
             )
         case .homeImageTypeNextUp:
             SettingsPickerScreen(
-                title: "Next Up",
+                title: Strings.settingsOverlayViewNextUp,
                 selection: container.userPreferences.binding(for: UserPreferences.homeImageTypeNextUp),
                 displayName: \.displayName,
                 options: ImageDisplayType.homeRowOptions
             )
         case .homeImageTypeMyMedia:
             SettingsPickerScreen(
-                title: "My Media",
+                title: Strings.settingsOverlayViewMyMedia,
                 selection: container.userPreferences.binding(for: UserPreferences.homeImageTypeMyMedia),
                 displayName: \.displayName,
                 options: ImageDisplayType.homeRowOptions
             )
         case .homeImageTypeLibraries:
             SettingsPickerScreen(
-                title: "Libraries",
+                title: Strings.libraries,
                 selection: container.userPreferences.binding(for: UserPreferences.homeImageTypeLibraries),
                 displayName: \.displayName,
                 options: ImageDisplayType.homeRowOptions
             )
         case .homeImageTypeLiveTv:
             SettingsPickerScreen(
-                title: "Live TV",
+                title: Strings.liveTv,
                 selection: container.userPreferences.binding(for: UserPreferences.homeImageTypeLiveTv),
                 displayName: \.displayName,
                 options: ImageDisplayType.homeRowOptions
@@ -308,19 +308,19 @@ private struct SettingsRouteResolver: View {
             )
         case .librariesDisplayImageSize(let itemId, _, _, _):
             SettingsPickerScreen(
-                title: "Image Size",
+                title: Strings.settingsOverlayViewImageSize,
                 selection: libraryBinding(itemId: itemId, keyPath: \.posterSize),
                 displayName: \.displayName
             )
         case .librariesDisplayImageType(let itemId, _, _, _):
             SettingsPickerScreen(
-                title: "Image Type",
+                title: Strings.settingsImageType,
                 selection: libraryBinding(itemId: itemId, keyPath: \.imageType),
                 displayName: \.displayName
             )
         case .librariesDisplayGrid(let itemId, _, _, _):
             SettingsPickerScreen(
-                title: "Grid Direction",
+                title: Strings.settingsOverlayViewGridDirection,
                 selection: libraryBinding(itemId: itemId, keyPath: \.gridDirection),
                 displayName: \.displayName
             )
@@ -328,63 +328,63 @@ private struct SettingsRouteResolver: View {
             SettingsMoonfinScreen()
         case .pluginCustomizationProfile:
             SettingsPickerScreen(
-                title: "Customization Profile",
+                title: Strings.settingsOverlayViewCustomizationProfile,
                 selection: container.userPreferences.binding(for: UserPreferences.pluginCustomizationProfile),
                 displayName: \.displayName
             )
         case .moonfinNavbarPosition:
             SettingsPickerScreen(
-                title: "Navbar Position",
+                title: Strings.settingsOverlayViewNavbarPosition,
                 selection: container.userPreferences.binding(for: UserPreferences.navbarPosition),
                 displayName: \.displayName
             )
         case .moonfinNavbarColor:
             SettingsPickerScreen(
-                title: "Navbar Color",
+                title: Strings.settingsOverlayViewNavbarColor,
                 selection: container.userPreferences.binding(for: UserPreferences.navbarColor),
                 displayName: \.displayName
             )
         case .moonfinNavbarOpacity:
             SettingsSyncPlayValueScreen(
-                title: "Navbar Opacity",
+                title: Strings.settingsOverlayViewNavbarOpacity,
                 preference: UserPreferences.navbarOpacity,
                 options: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
                 suffix: "%"
             )
         case .moonfinShuffleContentType:
             SettingsPickerScreen(
-                title: "Shuffle Content Type",
+                title: Strings.settingsOverlayViewShuffleContentType,
                 selection: container.userPreferences.binding(for: UserPreferences.shuffleContentType),
                 displayName: \.displayName
             )
         case .moonfinMediaBarContentType:
             SettingsPickerScreen(
-                title: "Media Bar Content",
+                title: Strings.settingsOverlayViewMediaBarContent,
                 selection: container.userPreferences.binding(for: UserPreferences.mediaBarContentType),
                 displayName: \.displayName
             )
         case .moonfinMediaBarItemCount:
             SettingsPickerScreen(
-                title: "Media Bar Items",
+                title: Strings.settingsOverlayViewMediaBarItems,
                 selection: container.userPreferences.binding(for: UserPreferences.mediaBarItemCount),
                 displayName: \.displayName
             )
         case .moonfinMediaBarMode:
             SettingsPickerScreen(
-                title: "Media Bar Mode",
+                title: Strings.settingsOverlayViewMediaBarMode,
                 selection: container.userPreferences.binding(for: UserPreferences.mediaBarMode),
                 displayName: \.displayName
             )
         case .moonfinMediaBarInterval:
             SettingsSyncPlayValueScreen(
-                title: "Media Bar Auto Advance Interval",
+                title: Strings.settingsOverlayViewMediaBarAutoAdvanceInterval,
                 preference: UserPreferences.mediaBarIntervalMs,
                 options: [5000, 10_000, 15_000, 30_000],
                 suffix: " ms"
             )
         case .moonfinMediaBarColor:
             SettingsPickerScreen(
-                title: "Media Bar Color",
+                title: Strings.settingsOverlayViewMediaBarColor,
                 selection: container.userPreferences.binding(for: UserPreferences.mediaBarOverlayColor),
                 displayName: \.displayName
             )
@@ -392,28 +392,28 @@ private struct SettingsRouteResolver: View {
             SettingsMediaBarOpacityScreen()
         case .moonfinThemeMusicVolume:
             SettingsSyncPlayValueScreen(
-                title: "Theme Music Volume",
+                title: Strings.settingsOverlayViewThemeMusicVolume,
                 preference: UserPreferences.themeMusicVolume,
                 options: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
                 suffix: "%"
             )
         case .moonfinDetailsBlur:
             SettingsSyncPlayValueScreen(
-                title: "Details Background Blur",
+                title: Strings.settingsOverlayViewDetailsBackgroundBlur,
                 preference: UserPreferences.detailsBackgroundBlur,
                 options: [0, 5, 10, 15, 20, 25, 30, 35, 40],
                 suffix: ""
             )
         case .moonfinBrowsingBlur:
             SettingsSyncPlayValueScreen(
-                title: "Browsing Background Blur",
+                title: Strings.settingsOverlayViewBrowsingBackgroundBlur,
                 preference: UserPreferences.browsingBackgroundBlur,
                 options: [0, 5, 10, 15, 20, 25, 30, 35, 40],
                 suffix: ""
             )
         case .moonfinSeasonalSurprise:
             SettingsPickerScreen(
-                title: "Seasonal Surprise",
+                title: Strings.settingsOverlayViewSeasonalSurprise,
                 selection: container.userPreferences.binding(for: UserPreferences.seasonalSurprise),
                 displayName: \.displayName
             )
@@ -500,26 +500,26 @@ private struct SettingsRouteResolver: View {
             )
         case .playbackRefreshRateSwitching:
             SettingsPickerScreen(
-                title: "Refresh Rate Switching",
+                title: Strings.settingsOverlayViewRefreshRateSwitching,
                 selection: container.userPreferences.binding(for: UserPreferences.refreshRateSwitchingBehavior),
                 displayName: \.displayName
             )
         case .playbackSkipBackLength:
             SettingsSyncPlayValueScreen(
-                title: "Skip Back Length",
+                title: Strings.settingsOverlayViewSkipBackLength,
                 preference: UserPreferences.skipBackLength,
                 options: [5, 10, 15, 20, 25, 30],
                 suffix: Strings.secondsShort
             )
         case .playbackDefaultAudioLanguage:
             SettingsPickerScreen(
-                title: "Default Audio Language",
+                title: Strings.settingsOverlayViewDefaultAudioLanguage,
                 selection: container.userPreferences.binding(for: UserPreferences.defaultAudioLanguage),
                 displayName: \.displayName
             )
         case .playbackQualityProfile:
             SettingsPickerScreen(
-                title: "Playback Quality",
+                title: Strings.settingsOverlayViewPlaybackQuality,
                 selection: container.userPreferences.binding(for: UserPreferences.playbackQualityProfile),
                 displayName: playbackQualityOptionLabel
             )

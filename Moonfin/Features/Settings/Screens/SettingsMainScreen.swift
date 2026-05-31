@@ -9,8 +9,8 @@ struct SettingsMainScreen: View {
         SettingsScreenLayout(title: Strings.settings) {
             SettingsListButton(
                 icon: "lock",
-                heading: "Account and Security",
-                caption: "Authentication, PIN, ratings, and safety settings",
+                heading: Strings.settingsMainScreenAccountAndSecurity,
+                caption: Strings.settingsMainScreenAccountAndSecurityCaption,
                 action: { settingsRouter.navigate(to: .accountAndSecurity) }
             )
             .focused($focusedRoute, equals: .accountAndSecurity)
@@ -18,40 +18,40 @@ struct SettingsMainScreen: View {
 
             SettingsListButton(
                 icon: "paintpalette",
-                heading: "Personalization",
-                caption: "General style, navigation, home, and library settings",
+                heading: Strings.settingsMainScreenPersonalization,
+                caption: Strings.settingsMainScreenPersonalizationCaption,
                 action: { settingsRouter.navigate(to: .personalization) }
             )
             .focused($focusedRoute, equals: .personalization)
 
             SettingsListButton(
                 icon: "rectangle.inset.filled",
-                heading: "Dynamic Content",
-                caption: "Media bar, previews, and seasonal effects",
+                heading: Strings.settingsMainScreenDynamicContent,
+                caption: Strings.settingsMainScreenDynamicContentCaption,
                 action: { settingsRouter.navigate(to: .dynamicContent) }
             )
             .focused($focusedRoute, equals: .dynamicContent)
 
             SettingsListButton(
                 icon: "play.circle",
-                heading: "Playback and SyncPlay",
-                caption: "Video, audio, subtitles, automation, sync, and advanced playback",
+                heading: Strings.settingsMainScreenPlaybackAndSyncPlay,
+                caption: Strings.settingsMainScreenPlaybackAndSyncPlayCaption,
                 action: { settingsRouter.navigate(to: .playbackAndSyncPlay) }
             )
             .focused($focusedRoute, equals: .playbackAndSyncPlay)
 
             SettingsListButton(
                 icon: "puzzlepiece.extension",
-                heading: "Integrations",
-                caption: "Plugin sync, ratings, Seerr, and integration status",
+                heading: Strings.integrations,
+                caption: Strings.settingsMainScreenIntegrationsCaption,
                 action: { settingsRouter.navigate(to: .integrations) }
             )
             .focused($focusedRoute, equals: .integrations)
 
             SettingsListButton(
                 icon: "info.circle",
-                heading: "About",
-                caption: "Version info, legal notices, support, and diagnostics",
+                heading: Strings.about,
+                caption: Strings.settingsMainScreenAboutCaption,
                 action: { settingsRouter.navigate(to: .about) }
             )
             .focused($focusedRoute, equals: .about)

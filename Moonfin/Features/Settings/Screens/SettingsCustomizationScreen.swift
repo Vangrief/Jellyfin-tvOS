@@ -9,11 +9,11 @@ struct SettingsCustomizationScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Customization") {
+        SettingsScreenLayout(title: Strings.customization) {
             SettingsListButton(
                 icon: "paintpalette",
-                heading: "Appearance Theme",
-                caption: "Select your app appearance theme",
+                heading: Strings.settingsCustomizationScreenAppearanceTheme,
+                caption: Strings.settingsCustomizationScreenAppearanceThemeCaption,
                 trailingText: theme.activeSpec.displayName,
                 action: { settingsRouter.navigate(to: .customizationAppearanceTheme) }
             )
@@ -21,8 +21,8 @@ struct SettingsCustomizationScreen: View {
 
             SettingsListButton(
                 icon: "circle.lefthalf.filled",
-                heading: "Focus Border Color",
-                caption: "Color of the focus indicator",
+                heading: Strings.settingsCustomizationScreenFocusBorderColor,
+                caption: Strings.settingsCustomizationScreenFocusBorderColorCaption,
                 trailingText: theme.focusBorder.displayName,
                 action: { settingsRouter.navigate(to: .customizationFocusBorder) }
             )
@@ -30,8 +30,8 @@ struct SettingsCustomizationScreen: View {
 
             SettingsListButton(
                 icon: "clock",
-                heading: "Clock",
-                caption: "When to show the clock",
+                heading: Strings.settingsCustomizationScreenClock,
+                caption: Strings.settingsCustomizationScreenClockCaption,
                 trailingText: prefs[UserPreferences.clockBehavior].displayName,
                 action: { settingsRouter.navigate(to: .customizationClock) }
             )
@@ -39,8 +39,8 @@ struct SettingsCustomizationScreen: View {
 
             SettingsListButton(
                 icon: "checkmark.circle",
-                heading: "Watched Indicator",
-                caption: "When to show watched status",
+                heading: Strings.settingsCustomizationScreenWatchedIndicator,
+                caption: Strings.settingsCustomizationScreenWatchedIndicatorCaption,
                 trailingText: prefs[UserPreferences.watchedIndicator].displayName,
                 action: { settingsRouter.navigate(to: .customizationWatchedIndicator) }
             )
@@ -48,16 +48,16 @@ struct SettingsCustomizationScreen: View {
 
             SettingsListButton(
                 icon: "captions.bubble",
-                heading: "Subtitles",
-                caption: "Appearance and defaults",
+                heading: Strings.subtitlesSettings,
+                caption: Strings.settingsCustomizationScreenSubtitlesCaption,
                 action: { settingsRouter.navigate(to: .customizationSubtitles) }
             )
             .focused($focusedRoute, equals: .customizationSubtitles)
 
             SettingsListButton(
                 icon: "books.vertical",
-                heading: "Libraries",
-                caption: "Per-library display settings",
+                heading: Strings.librariesSettings,
+                caption: Strings.settingsCustomizationScreenLibrariesCaption,
                 action: { settingsRouter.navigate(to: .libraries) }
             )
             .focused($focusedRoute, equals: .libraries)

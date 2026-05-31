@@ -298,26 +298,26 @@ final class HomeViewModel: ObservableObject {
     private func itemTypesForLibrary(_ item: ServerItem) -> [(ItemType, String, String)] {
         switch item.collectionType?.lowercased() {
         case "movies":
-            return [(.movie, "movie", "movies"), (.boxSet, "collection", "collections")]
+            return [(.movie, Strings.homeViewModelMovieSingular, Strings.homeViewModelMoviePlural), (.boxSet, Strings.homeViewModelCollectionSingular, Strings.homeViewModelCollectionPlural)]
         case "tvshows":
-            return [(.series, "series", "series"), (.season, "season", "seasons")]
+            return [(.series, Strings.homeViewModelSeriesSingular, Strings.homeViewModelSeriesPlural), (.season, Strings.homeViewModelSeasonSingular, Strings.homeViewModelSeasonPlural)]
         case "music":
-            return [(.musicAlbum, "album", "albums"), (.audio, "track", "tracks")]
+            return [(.musicAlbum, Strings.homeViewModelAlbumSingular, Strings.homeViewModelAlbumPlural), (.audio, Strings.homeViewModelTrackSingular, Strings.homeViewModelTrackPlural)]
         case "photos", "homevideos":
-            return [(.photo, "photo", "photos")]
+            return [(.photo, Strings.homeViewModelPhotoSingular, Strings.homeViewModelPhotoPlural)]
         case "boxsets":
-            return [(.boxSet, "collection", "collections")]
+            return [(.boxSet, Strings.homeViewModelCollectionSingular, Strings.homeViewModelCollectionPlural)]
         case "playlists":
-            return [(.playlist, "playlist", "playlists")]
+            return [(.playlist, Strings.homeViewModelPlaylistSingular, Strings.homeViewModelPlaylistPlural)]
         case "books":
-            return [(.book, "book", "books")]
+            return [(.book, Strings.homeViewModelBookSingular, Strings.homeViewModelBookPlural)]
         default:
             return [
-                (.movie, "movie", "movies"),
-                (.series, "series", "series"),
-                (.musicAlbum, "album", "albums"),
-                (.audio, "track", "tracks"),
-                (.photo, "photo", "photos"),
+                (.movie, Strings.homeViewModelMovieSingular, Strings.homeViewModelMoviePlural),
+                (.series, Strings.homeViewModelSeriesSingular, Strings.homeViewModelSeriesPlural),
+                (.musicAlbum, Strings.homeViewModelAlbumSingular, Strings.homeViewModelAlbumPlural),
+                (.audio, Strings.homeViewModelTrackSingular, Strings.homeViewModelTrackPlural),
+                (.photo, Strings.homeViewModelPhotoSingular, Strings.homeViewModelPhotoPlural),
             ]
         }
     }
@@ -456,7 +456,7 @@ final class HomeViewModel: ObservableObject {
                         items = await multiRepo.getAggregatedResumeItems(mediaTypes: [.video], limit: Self.multiServerLimit)
                     }
                     resultRows.append(makeStaticRow(
-                        id: "ms_resume_video", title: "Continue Watching",
+                        id: "ms_resume_video", title: Strings.homeViewModelContinueWatching,
                         rowType: .continueWatching, items: items
                     ))
                     if mergeEnabled { continue }
@@ -467,7 +467,7 @@ final class HomeViewModel: ObservableObject {
                     }
                     let items = await multiRepo.getAggregatedNextUpItems(limit: Self.multiServerLimit)
                     resultRows.append(makeStaticRow(
-                        id: "ms_next_up", title: "Next Up",
+                        id: "ms_next_up", title: Strings.homeViewModelNextUp,
                         rowType: .nextUp, items: items
                     ))
 
@@ -494,7 +494,7 @@ final class HomeViewModel: ObservableObject {
                             ))
                         resultRows.append(makeRow(
                             id: rowId,
-                            title: "Latest \(lib.displayName)",
+                            title: Strings.homeViewModelLatestX(lib.displayName),
                             rowType: .latestMedia(libraryId: lib.library.id),
                             isMusicLibraryRow: isMusic,
                             queryType: queryType,
@@ -505,14 +505,14 @@ final class HomeViewModel: ObservableObject {
                 case .myMedia:
                     let items = aggregatedLibraries.map(\.library)
                     resultRows.append(makeStaticRow(
-                        id: "ms_my_media", title: "My Media",
+                        id: "ms_my_media", title: Strings.homeViewModelMyMedia,
                         rowType: .myMedia, items: items
                     ))
 
                 case .myMediaSmall:
                     let items = aggregatedLibraries.map(\.library)
                     resultRows.append(makeStaticRow(
-                        id: "ms_my_media_small", title: "My Media",
+                        id: "ms_my_media_small", title: Strings.homeViewModelMyMedia,
                         rowType: .myMediaSmall, items: items
                     ))
 
@@ -553,7 +553,7 @@ final class HomeViewModel: ObservableObject {
         rows.append(
             makeStaticRow(
                 id: fallbackId,
-                title: "Libraries",
+                title: Strings.libraries,
                 rowType: .myMedia,
                 items: userViews
             )
@@ -895,7 +895,7 @@ final class HomeViewModel: ObservableObject {
             if mergeEnabled {
                 return [makeRow(
                     id: "merged_continue_watching",
-                    title: "Continue Watching",
+                    title: Strings.homeViewModelContinueWatching,
                     rowType: .continueWatching,
                     queryType: .mergedContinueWatching(
                         resume: GetResumeItemsRequest(
@@ -915,7 +915,7 @@ final class HomeViewModel: ObservableObject {
             }
             return [makeRow(
                 id: "resume_video",
-                title: "Continue Watching",
+                title: Strings.homeViewModelContinueWatching,
                 rowType: .continueWatching,
                 queryType: .resume(GetResumeItemsRequest(
                     mediaTypes: [.video],
@@ -929,7 +929,7 @@ final class HomeViewModel: ObservableObject {
         case .resumeBook:
             return [makeRow(
                 id: "resume_books",
-                title: "Continue Reading",
+                title: Strings.homeViewModelContinueReading,
                 rowType: .resumeBook,
                 queryType: .resume(GetResumeItemsRequest(
                     mediaTypes: [.book],
@@ -946,7 +946,7 @@ final class HomeViewModel: ObservableObject {
             }
             return [makeRow(
                 id: "next_up",
-                title: "Next Up",
+                title: Strings.homeViewModelNextUp,
                 rowType: .nextUp,
                 queryType: .nextUp(GetNextUpRequest(
                     fields: Self.defaultFields,
@@ -967,7 +967,7 @@ final class HomeViewModel: ObservableObject {
                     ))
                 return makeRow(
                     id: "latest_\(view.id)",
-                    title: "Latest \(view.name)",
+                    title: Strings.homeViewModelLatestX(view.name),
                     rowType: .latestMedia(libraryId: view.id),
                     isMusicLibraryRow: isMusic,
                     queryType: queryType,
@@ -978,7 +978,7 @@ final class HomeViewModel: ObservableObject {
         case .activeRecordings:
             return [makeRow(
                 id: "active_recordings",
-                title: "Active Recordings",
+                title: Strings.homeViewModelActiveRecordings,
                 rowType: .activeRecordings,
                 queryType: .liveTvRecordings,
                 triggers: []
@@ -987,7 +987,7 @@ final class HomeViewModel: ObservableObject {
         case .recentlyReleased:
             return [makeRow(
                 id: "recently_released",
-                title: "Recently Released",
+                title: Strings.homeViewModelRecentlyReleased,
                 rowType: .recentlyReleased,
                 queryType: .items(GetItemsRequest(
                     recursive: true,
@@ -1038,7 +1038,7 @@ final class HomeViewModel: ObservableObject {
         case .collections:
             return [makeRow(
                 id: "collections_builtin",
-                title: "Collections",
+                title: Strings.collections,
                 rowType: .collections,
                 queryType: .items(GetItemsRequest(
                     recursive: true,
@@ -1057,7 +1057,7 @@ final class HomeViewModel: ObservableObject {
         case .genres:
             return [makeRow(
                 id: "genres_builtin",
-                title: "Genres",
+                title: Strings.genres,
                 rowType: .genres,
                 queryType: .items(GetItemsRequest(
                     recursive: true,
@@ -1074,15 +1074,15 @@ final class HomeViewModel: ObservableObject {
             )]
 
         case .myMedia:
-            return [makeStaticRow(id: "my_media", title: "My Media", rowType: .myMedia, items: userViews)]
+            return [makeStaticRow(id: "my_media", title: Strings.homeViewModelMyMedia, rowType: .myMedia, items: userViews)]
 
         case .myMediaSmall:
-            return [makeStaticRow(id: "my_media_small", title: "My Media", rowType: .myMediaSmall, items: userViews)]
+            return [makeStaticRow(id: "my_media_small", title: Strings.homeViewModelMyMedia, rowType: .myMediaSmall, items: userViews)]
 
         case .resumeAudio:
             return [makeRow(
                 id: "resume_audio",
-                title: "Continue Listening",
+                title: Strings.homeViewModelContinueListening,
                 rowType: .resumeAudio,
                 queryType: .resume(GetResumeItemsRequest(
                     mediaTypes: [.audio],
@@ -1096,7 +1096,7 @@ final class HomeViewModel: ObservableObject {
         case .playlists:
             return [makeRow(
                 id: "playlists",
-                title: "Playlists",
+                title: Strings.playlists,
                 rowType: .playlists,
                 queryType: .items(GetItemsRequest(
                     recursive: true,
@@ -1112,29 +1112,29 @@ final class HomeViewModel: ObservableObject {
 
         case .liveTv:
             let buttonItems: [ServerItem] = [
-                .placeholder(id: "ltv_guide", name: "Guide"),
-                .placeholder(id: "ltv_recordings", name: "Recordings"),
-                .placeholder(id: "ltv_schedule", name: "Schedule"),
-                .placeholder(id: "ltv_series", name: "Series"),
+                .placeholder(id: "ltv_guide", name: Strings.liveTvGuideShort),
+                .placeholder(id: "ltv_recordings", name: Strings.recordings),
+                .placeholder(id: "ltv_schedule", name: Strings.schedule),
+                .placeholder(id: "ltv_series", name: Strings.series),
             ]
             return [
                 makeRow(
                     id: "live_tv_buttons",
-                    title: "Live TV",
+                    title: Strings.liveTv,
                     rowType: .liveTvButtons,
                     queryType: .staticItems(buttonItems),
                     triggers: []
                 ),
                 makeRow(
                     id: "live_tv_on_now",
-                    title: "On Now",
+                    title: Strings.homeViewModelOnNow,
                     rowType: .liveTvOnNow,
                     queryType: .liveTvOnNow,
                     triggers: []
                 ),
                 makeRow(
                     id: "live_tv_coming_up",
-                    title: "Coming Up",
+                    title: Strings.homeViewModelComingUp,
                     rowType: .liveTvComingUp,
                     queryType: .liveTvComingUp,
                     triggers: []
@@ -1191,23 +1191,23 @@ final class HomeViewModel: ObservableObject {
     )? {
         switch section {
         case .favorites:
-            return ("favorites", "Favorites", .favorites, nil)
+            return ("favorites", Strings.favorites, .favorites, nil)
         case .favoriteMovies:
-            return ("favorite_movies", "Favorite Movies", .favoriteMovies, [.movie])
+            return ("favorite_movies", Strings.homeViewModelFavoriteMovies, .favoriteMovies, [.movie])
         case .favoriteSeries:
-            return ("favorite_series", "Favorite Series", .favoriteSeries, [.series])
+            return ("favorite_series", Strings.homeViewModelFavoriteSeries, .favoriteSeries, [.series])
         case .favoriteEpisodes:
-            return ("favorite_episodes", "Favorite Episodes", .favoriteEpisodes, [.episode])
+            return ("favorite_episodes", Strings.homeViewModelFavoriteEpisodes, .favoriteEpisodes, [.episode])
         case .favoritePeople:
-            return ("favorite_people", "Favorite People", .favoritePeople, [.person])
+            return ("favorite_people", Strings.homeViewModelFavoritePeople, .favoritePeople, [.person])
         case .favoriteArtists:
-            return ("favorite_artists", "Favorite Artists", .favoriteArtists, [.musicArtist])
+            return ("favorite_artists", Strings.homeViewModelFavoriteArtists, .favoriteArtists, [.musicArtist])
         case .favoriteMusicVideos:
-            return ("favorite_music_videos", "Favorite Music Videos", .favoriteMusicVideos, [.musicVideo])
+            return ("favorite_music_videos", Strings.homeViewModelFavoriteMusicVideos, .favoriteMusicVideos, [.musicVideo])
         case .favoriteAlbums:
-            return ("favorite_albums", "Favorite Albums", .favoriteAlbums, [.musicAlbum])
+            return ("favorite_albums", Strings.homeViewModelFavoriteAlbums, .favoriteAlbums, [.musicAlbum])
         case .favoriteSongs:
-            return ("favorite_songs", "Favorite Songs", .favoriteSongs, [.audio])
+            return ("favorite_songs", Strings.homeViewModelFavoriteSongs, .favoriteSongs, [.audio])
         default:
             return nil
         }

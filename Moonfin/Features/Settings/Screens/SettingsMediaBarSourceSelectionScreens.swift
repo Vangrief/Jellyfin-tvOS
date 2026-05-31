@@ -15,13 +15,13 @@ struct SettingsMediaBarLibrariesSelectionScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Source Libraries") {
+        SettingsScreenLayout(title: Strings.settingsMediaBarSourceSelectionScreensSourceLibraries) {
             if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, SpaceTokens.spaceLg)
             } else if choices.isEmpty {
-                Text("No libraries available")
+                Text(Strings.settingsLibraryVisibilityNoLibraries)
                     .font(.bodyMd)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, SpaceTokens.spaceMd)
@@ -76,13 +76,13 @@ struct SettingsMediaBarCollectionsSelectionScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Source Collections") {
+        SettingsScreenLayout(title: Strings.settingsMediaBarSourceSelectionScreensSourceCollections) {
             if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, SpaceTokens.spaceLg)
             } else if choices.isEmpty {
-                Text("No collections available")
+                Text(Strings.settingsMediaBarSourceSelectionScreensNoCollections)
                     .font(.bodyMd)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, SpaceTokens.spaceMd)
@@ -158,13 +158,13 @@ struct SettingsMediaBarExcludedGenresSelectionScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Excluded Genres") {
+        SettingsScreenLayout(title: Strings.settingsMediaBarSourceSelectionScreensExcludedGenres) {
             if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, SpaceTokens.spaceLg)
             } else if choices.isEmpty {
-                Text("No genres available")
+                Text(Strings.settingsMediaBarSourceSelectionScreensNoGenres)
                     .font(.bodyMd)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, SpaceTokens.spaceMd)

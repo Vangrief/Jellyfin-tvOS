@@ -9,8 +9,8 @@ struct SettingsSeerrRowsScreen: View {
     private var repo: SeerrRepositoryProtocol { container.seerrRepository }
 
     var body: some View {
-        SettingsScreenLayout(title: "Discover Rows") {
-            Text("Press left or right to rearrange")
+        SettingsScreenLayout(title: Strings.settingsSeerrRowsScreenDiscoverRows) {
+            Text(Strings.settingsRearrangeHint)
                 .font(.caption)
                 .foregroundColor(theme.colorScheme.listCaption)
                 .padding(.bottom, SpaceTokens.space2xs)
@@ -27,7 +27,7 @@ struct SettingsSeerrRowsScreen: View {
             }
 
             Button(action: resetToDefaults) {
-                FocusAwareActionLabel(icon: "arrow.counterclockwise", text: "Reset to Defaults")
+                FocusAwareActionLabel(icon: "arrow.counterclockwise", text: Strings.settingsResetToDefaults)
             }
             .buttonStyle(CleanButtonStyle())
             .padding(.top, SpaceTokens.spaceMd)

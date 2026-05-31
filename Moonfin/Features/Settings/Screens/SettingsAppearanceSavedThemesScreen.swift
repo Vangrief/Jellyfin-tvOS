@@ -11,8 +11,8 @@ struct SettingsAppearanceSavedThemesScreen: View {
     @State private var pendingDelete: SavedThemeEntry?
 
     var body: some View {
-        SettingsScreenLayout(title: "Saved Themes") {
-            Text("These themes were downloaded from the Moonfin plugin for the current server. Deleting removes only this local copy.")
+        SettingsScreenLayout(title: Strings.settingsAppearanceSavedThemesScreenTitle) {
+            Text(Strings.settingsAppearanceSavedThemesScreenDescription)
                 .font(.captionXs)
                 .foregroundColor(theme.colorScheme.listCaption)
                 .padding(.horizontal, SpaceTokens.spaceMd)
@@ -30,7 +30,7 @@ struct SettingsAppearanceSavedThemesScreen: View {
                 HStack(spacing: SpaceTokens.spaceSm) {
                     ProgressView()
                         .progressViewStyle(.circular)
-                    Text("Loading saved themes...")
+                    Text(Strings.settingsAppearanceSavedThemesScreenLoading)
                         .font(.captionXs)
                         .foregroundColor(theme.colorScheme.listCaption)
                 }
@@ -39,7 +39,7 @@ struct SettingsAppearanceSavedThemesScreen: View {
             }
 
             if !isLoading && savedThemes.isEmpty {
-                Text("No saved themes were found for this server.")
+                Text(Strings.settingsAppearanceSavedThemesScreenEmpty)
                     .font(.captionXs)
                     .foregroundColor(theme.colorScheme.listCaption)
                     .padding(.horizontal, SpaceTokens.spaceMd)
@@ -77,9 +77,9 @@ struct SettingsAppearanceSavedThemesScreen: View {
         }
         .alert(item: $pendingDelete) { entry in
             Alert(
-                title: Text("Delete Saved Theme"),
-                message: Text("Delete \"\(entry.displayName)\" from this device cache?"),
-                primaryButton: .destructive(Text("Delete")) {
+                title: Text(Strings.settingsAppearanceSavedThemesScreenDeleteTitle),
+                message: Text(Strings.settingsAppearanceSavedThemesScreenDeleteMessage(entry.displayName)),
+                primaryButton: .destructive(Text(Strings.delete)) {
                     deleteTheme(entry)
                 },
                 secondaryButton: .cancel()
@@ -98,8 +98,8 @@ struct SettingsAppearanceSavedThemesScreen: View {
 
         let deleted = container.pluginSyncService.deleteSavedTheme(themeId: entry.id)
         statusMessage = deleted
-            ? "Deleted \"\(entry.displayName)\" from this device."
-            : "Could not delete \"\(entry.displayName)\"."
+            ? Strings.settingsAppearanceSavedThemesScreenDeletedStatus(entry.displayName)
+            : Strings.settingsAppearanceSavedThemesScreenDeleteFailedStatus(entry.displayName)
 
         reloadSavedThemes()
         deletingThemeId = nil

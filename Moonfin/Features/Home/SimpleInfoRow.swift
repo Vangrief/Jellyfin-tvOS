@@ -77,7 +77,7 @@ struct SimpleInfoRow: View {
         }
 
         if let count = item.songCount ?? item.childCount, count > 0 {
-            parts.append(infoText("\(count) track\(count == 1 ? "" : "s")"))
+            parts.append(infoText(count == 1 ? Strings.simpleInfoRowTrackCountSingular(count) : Strings.simpleInfoRowTrackCountPlural(count)))
         }
 
         if let genres = item.genres, !genres.isEmpty {

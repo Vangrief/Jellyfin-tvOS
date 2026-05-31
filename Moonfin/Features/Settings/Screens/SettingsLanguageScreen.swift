@@ -10,7 +10,7 @@ struct SettingsLanguageScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Language") {
+        SettingsScreenLayout(title: Strings.settingsLanguageScreenLanguage) {
             ForEach(languageOptions) { locale in
                 languageButton(for: locale)
                     .focused($focusedLanguageCode, equals: locale.rawValue)

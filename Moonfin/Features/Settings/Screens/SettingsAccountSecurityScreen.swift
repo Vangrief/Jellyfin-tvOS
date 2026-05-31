@@ -8,11 +8,11 @@ struct SettingsAccountSecurityScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Account and Security") {
+        SettingsScreenLayout(title: Strings.settingsAccountSecurityScreenTitle) {
             SettingsListButton(
                 icon: "arrow.left.arrow.right",
-                heading: "Sort Servers By",
-                caption: "Order of servers in the list",
+                heading: Strings.settingsAccountSecurityScreenSortServersBy,
+                caption: Strings.settingsAccountSecurityScreenSortServersByCaption,
                 trailingText: container.authPreferences.sortBy.displayName,
                 action: { settingsRouter.navigate(to: .authenticationSortBy) }
             )
@@ -20,8 +20,8 @@ struct SettingsAccountSecurityScreen: View {
 
             SettingsListButton(
                 icon: "person.crop.circle.badge.checkmark",
-                heading: "Auto Login",
-                caption: "Controls how user auto-selection behaves at startup",
+                heading: Strings.settingsAccountSecurityScreenAutoLogin,
+                caption: Strings.settingsAccountSecurityScreenAutoLoginCaption,
                 trailingText: container.authPreferences.autoLoginBehavior.displayName,
                 action: { settingsRouter.navigate(to: .authenticationAutoSignIn) }
             )
@@ -29,8 +29,8 @@ struct SettingsAccountSecurityScreen: View {
 
             SettingsToggleButton(
                 icon: "lock",
-                heading: "Always Authenticate",
-                caption: "Require password even with a saved token",
+                heading: Strings.settingsAccountSecurityScreenAlwaysAuthenticate,
+                caption: Strings.settingsAccountSecurityScreenAlwaysAuthenticateCaption,
                 isOn: Binding(
                     get: { container.authPreferences.alwaysAuthenticate },
                     set: { container.authPreferences.alwaysAuthenticate = $0 }
@@ -39,33 +39,33 @@ struct SettingsAccountSecurityScreen: View {
 
             SettingsListButton(
                 icon: "person.crop.circle.badge.checkmark",
-                heading: "Authentication",
-                caption: "Auto login, sign-in behavior, and stored servers",
+                heading: Strings.authentication,
+                caption: Strings.settingsAccountSecurityScreenAuthenticationCaption,
                 action: { settingsRouter.navigate(to: .authentication) }
             )
             .focused($focusedRoute, equals: .authentication)
 
             SettingsListButton(
                 icon: "lock",
-                heading: "PIN Code",
-                caption: "Protect access with a device PIN",
+                heading: Strings.settingsAccountSecurityScreenPinCode,
+                caption: Strings.settingsAccountSecurityScreenPinCodeCaption,
                 action: { settingsRouter.navigate(to: .authenticationPinCode) }
             )
             .focused($focusedRoute, equals: .authenticationPinCode)
 
             SettingsListButton(
                 icon: "lock.shield",
-                heading: "Blocked Ratings",
-                caption: "Restrict content by parental rating",
-                trailingText: container.parentalControlsRepository.isEnabled ? "Enabled" : "Disabled",
+                heading: Strings.settingsAccountSecurityScreenBlockedRatings,
+                caption: Strings.settingsAccountSecurityScreenBlockedRatingsCaption,
+                trailingText: container.parentalControlsRepository.isEnabled ? Strings.enabled : Strings.disabled,
                 action: { settingsRouter.navigate(to: .moonfinParentalControls) }
             )
             .focused($focusedRoute, equals: .moonfinParentalControls)
 
             SettingsToggleButton(
                 icon: "rectangle.portrait.and.arrow.right",
-                heading: "Confirm Exit",
-                caption: "Ask for confirmation before exiting the app",
+                heading: Strings.settingsAccountSecurityScreenConfirmExit,
+                caption: Strings.settingsAccountSecurityScreenConfirmExitCaption,
                 isOn: prefs.binding(for: UserPreferences.confirmExit)
             )
         }

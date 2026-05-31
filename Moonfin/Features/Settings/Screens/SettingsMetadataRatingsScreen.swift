@@ -7,39 +7,39 @@ struct SettingsMetadataRatingsScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Metadata and Ratings") {
+        SettingsScreenLayout(title: Strings.settingsMetadataRatingsScreenMetadataAndRatings) {
             SettingsToggleButton(
                 icon: "star.fill",
-                heading: "Additional Ratings",
-                caption: "Enable extra rating sources on media items",
+                heading: Strings.settingsMetadataRatingsScreenAdditionalRatings,
+                caption: Strings.settingsMetadataRatingsScreenAdditionalRatingsCaption,
                 isOn: prefs.binding(for: UserPreferences.enableAdditionalRatings)
             )
 
             SettingsListButton(
                 icon: "arrow.left.arrow.right",
-                heading: "Rating Sources",
-                caption: "Enable, disable, and reorder sources",
+                heading: Strings.settingsMetadataRatingsScreenRatingSources,
+                caption: Strings.settingsMetadataRatingsScreenRatingSourcesCaption,
                 action: { settingsRouter.navigate(to: .integrationsRatingSources) }
             )
 
             SettingsToggleButton(
                 icon: "tv",
-                heading: "Episode Ratings",
-                caption: "Display episode-level ratings when available",
+                heading: Strings.settingsMetadataRatingsScreenEpisodeRatings,
+                caption: Strings.settingsMetadataRatingsScreenEpisodeRatingsCaption,
                 isOn: prefs.binding(for: UserPreferences.enableEpisodeRatings)
             )
 
             SettingsToggleButton(
                 icon: "tag.fill",
-                heading: "Rating Labels",
-                caption: "Show text labels next to rating icons",
+                heading: Strings.settingsMetadataRatingsScreenRatingLabels,
+                caption: Strings.settingsMetadataRatingsScreenRatingLabelsCaption,
                 isOn: prefs.binding(for: UserPreferences.showRatingLabels)
             )
 
             SettingsToggleButton(
                 icon: "rosette",
-                heading: "Rating Badges",
-                caption: "Show decorative rating badges",
+                heading: Strings.settingsMetadataRatingsScreenRatingBadges,
+                caption: Strings.settingsMetadataRatingsScreenRatingBadgesCaption,
                 isOn: prefs.binding(for: UserPreferences.showRatingBadges)
             )
         }
@@ -55,8 +55,8 @@ struct SettingsRatingSourcesScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Rating Sources") {
-            Text("Press left or right to rearrange")
+        SettingsScreenLayout(title: Strings.settingsMetadataRatingsScreenRatingSources) {
+            Text(Strings.settingsMetadataRatingsScreenPressToRearrange)
                 .font(.caption)
                 .foregroundColor(theme.colorScheme.listCaption)
                 .padding(.bottom, SpaceTokens.space2xs)
@@ -73,7 +73,7 @@ struct SettingsRatingSourcesScreen: View {
             }
 
             Button(action: resetToDefaults) {
-                FocusAwareActionLabel(icon: "arrow.counterclockwise", text: "Reset to Defaults")
+                FocusAwareActionLabel(icon: "arrow.counterclockwise", text: Strings.settingsResetToDefaults)
             }
             .buttonStyle(CleanButtonStyle())
             .padding(.top, SpaceTokens.spaceMd)

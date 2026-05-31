@@ -12,7 +12,7 @@ struct SettingsMediaSegmentsScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Media Segments") {
+        SettingsScreenLayout(title: Strings.settingsMediaSegmentsScreenTitle) {
             ForEach(MediaSegmentType.supported, id: \.self) { type in
                 let action = actionMap[type] ?? .nothing
                 SettingsListButton(

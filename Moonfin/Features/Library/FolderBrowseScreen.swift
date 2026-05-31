@@ -122,7 +122,7 @@ struct FolderBrowseScreen: View {
     private var rootFolderRows: some View {
         Group {
             if viewModel.rootRows.isEmpty && !viewModel.isLoading {
-                emptyState(icon: "folder", message: "No folders found")
+                emptyState(icon: "folder", message: Strings.folderBrowseScreenNoFolders)
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 20) {
@@ -173,7 +173,7 @@ struct FolderBrowseScreen: View {
     private var folderGrid: some View {
         Group {
             if viewModel.items.isEmpty && !viewModel.isLoading {
-                emptyState(icon: "folder", message: "Empty folder")
+                emptyState(icon: "folder", message: Strings.folderBrowseScreenEmptyFolder)
             } else {
                 ScrollView {
                     LazyVGrid(

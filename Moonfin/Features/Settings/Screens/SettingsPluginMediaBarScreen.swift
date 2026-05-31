@@ -12,11 +12,11 @@ struct SettingsPluginMediaBarScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Media Bar") {
+        SettingsScreenLayout(title: Strings.mediaBarTitle) {
             SettingsListButton(
                 icon: "switch.2",
-                heading: "Media Bar Style",
-                caption: "Choose media bar style or turn off",
+                heading: Strings.settingsPluginMediaBarScreenMediaBarStyle,
+                caption: Strings.settingsPluginMediaBarScreenMediaBarStyleCaption,
                 trailingText: prefs[UserPreferences.mediaBarMode].displayName,
                 action: { settingsRouter.navigate(to: .moonfinMediaBarMode) }
             )
@@ -25,17 +25,17 @@ struct SettingsPluginMediaBarScreen: View {
             if !isMediaBarDisabled {
             SettingsListButton(
                 icon: "film.stack",
-                heading: "Content Type",
-                caption: "What to show in the media bar",
-                trailingText: prefs[UserPreferences.mediaBarContentType] == .both ? "Movies & TV Shows" : prefs[UserPreferences.mediaBarContentType].displayName,
+                heading: Strings.settingsPluginMediaBarScreenContentType,
+                caption: Strings.settingsPluginMediaBarScreenContentTypeCaption,
+                trailingText: prefs[UserPreferences.mediaBarContentType] == .both ? Strings.settingsPluginMediaBarScreenMoviesAndTvShows : prefs[UserPreferences.mediaBarContentType].displayName,
                 action: { settingsRouter.navigate(to: .moonfinMediaBarContentType) }
             )
             .focused($focusedRoute, equals: .moonfinMediaBarContentType)
 
             SettingsListButton(
                 icon: "number",
-                heading: "Item Count",
-                caption: "Number of media bar items",
+                heading: Strings.settingsPluginMediaBarScreenItemCount,
+                caption: Strings.settingsPluginMediaBarScreenItemCountCaption,
                 trailingText: prefs[UserPreferences.mediaBarItemCount].displayName,
                 action: { settingsRouter.navigate(to: .moonfinMediaBarItemCount) }
             )
@@ -43,8 +43,8 @@ struct SettingsPluginMediaBarScreen: View {
 
             SettingsListButton(
                 icon: "film",
-                heading: "Source Libraries",
-                caption: "Select libraries used as media bar sources",
+                heading: Strings.settingsPluginMediaBarScreenSourceLibraries,
+                caption: Strings.settingsPluginMediaBarScreenSourceLibrariesCaption,
                 trailingText: selectedCountLabel(prefs[UserPreferences.mediaBarLibraryIds]),
                 action: { settingsRouter.navigate(to: .dynamicContentMediaBarSourceLibraries) }
             )
@@ -52,8 +52,8 @@ struct SettingsPluginMediaBarScreen: View {
 
             SettingsListButton(
                 icon: "square.stack.3d.up",
-                heading: "Source Collections",
-                caption: "Select collections used as media bar sources",
+                heading: Strings.settingsPluginMediaBarScreenSourceCollections,
+                caption: Strings.settingsPluginMediaBarScreenSourceCollectionsCaption,
                 trailingText: selectedCountLabel(prefs[UserPreferences.mediaBarCollectionIds]),
                 action: { settingsRouter.navigate(to: .dynamicContentMediaBarSourceCollections) }
             )
@@ -61,8 +61,8 @@ struct SettingsPluginMediaBarScreen: View {
 
             SettingsListButton(
                 icon: "tag.slash",
-                heading: "Excluded Genres",
-                caption: "Exclude genres from media bar items",
+                heading: Strings.settingsPluginMediaBarScreenExcludedGenres,
+                caption: Strings.settingsPluginMediaBarScreenExcludedGenresCaption,
                 trailingText: selectedCountLabel(prefs[UserPreferences.mediaBarExcludedGenres]),
                 action: { settingsRouter.navigate(to: .dynamicContentMediaBarExcludedGenres) }
             )
@@ -70,17 +70,17 @@ struct SettingsPluginMediaBarScreen: View {
 
             SettingsToggleButton(
                 icon: "play.fill",
-                heading: "Auto Advance",
-                caption: "Automatically advance media bar slides",
+                heading: Strings.settingsPluginMediaBarScreenAutoAdvance,
+                caption: Strings.settingsPluginMediaBarScreenAutoAdvanceCaption,
                 isOn: prefs.binding(for: UserPreferences.mediaBarAutoAdvance)
             )
 
             if prefs[UserPreferences.mediaBarAutoAdvance] {
                 SettingsListButton(
                     icon: "timer",
-                    heading: "Auto Advance Interval",
-                    caption: "Time between slide advances",
-                    trailingText: "\(prefs[UserPreferences.mediaBarIntervalMs]) ms",
+                    heading: Strings.settingsPluginMediaBarScreenAutoAdvanceInterval,
+                    caption: Strings.settingsPluginMediaBarScreenAutoAdvanceIntervalCaption,
+                    trailingText: Strings.settingsPluginMediaBarScreenMilliseconds(prefs[UserPreferences.mediaBarIntervalMs]),
                     action: { settingsRouter.navigate(to: .moonfinMediaBarInterval) }
                 )
                 .focused($focusedRoute, equals: .moonfinMediaBarInterval)
@@ -88,15 +88,15 @@ struct SettingsPluginMediaBarScreen: View {
 
             SettingsToggleButton(
                 icon: "speaker.wave.2.fill",
-                heading: "Trailer Audio",
-                caption: "Play audio during media bar trailer previews",
+                heading: Strings.settingsPluginMediaBarScreenTrailerAudio,
+                caption: Strings.settingsPluginMediaBarScreenTrailerAudioCaption,
                 isOn: prefs.binding(for: UserPreferences.mediaBarTrailerAudio)
             )
 
             SettingsListButton(
                 icon: "circle.lefthalf.filled.inverse",
-                heading: "Media Bar Overlay",
-                caption: "Overlay opacity",
+                heading: Strings.settingsPluginMediaBarScreenMediaBarOverlay,
+                caption: Strings.settingsPluginMediaBarScreenOverlayOpacity,
                 trailingText: "\(prefs[UserPreferences.mediaBarOverlayOpacity])%",
                 action: { settingsRouter.navigate(to: .moonfinMediaBarOpacity) }
             )
@@ -104,8 +104,8 @@ struct SettingsPluginMediaBarScreen: View {
 
             SettingsListButton(
                 icon: "paintpalette",
-                heading: "Media Bar Color",
-                caption: "Overlay color",
+                heading: Strings.settingsPluginMediaBarScreenMediaBarColor,
+                caption: Strings.settingsPluginMediaBarScreenOverlayColor,
                 trailingText: prefs[UserPreferences.mediaBarOverlayColor].displayName,
                 action: { settingsRouter.navigate(to: .moonfinMediaBarColor) }
             )
@@ -119,6 +119,6 @@ struct SettingsPluginMediaBarScreen: View {
     private func selectedCountLabel(_ ids: [String]) -> String {
         let normalizedCount = Set(ids.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }).count
-        return normalizedCount == 0 ? "All" : "\(normalizedCount) selected"
+        return normalizedCount == 0 ? Strings.liveTvAll : Strings.settingsPluginMediaBarScreenSelectedCount(normalizedCount)
     }
 }

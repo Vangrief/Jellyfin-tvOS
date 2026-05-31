@@ -5,27 +5,27 @@ struct SettingsDynamicContentScreen: View {
     @FocusState private var focusedRoute: SettingsRoute?
 
     var body: some View {
-        SettingsScreenLayout(title: "Dynamic Content") {
+        SettingsScreenLayout(title: Strings.settingsDynamicContentScreenTitle) {
             SettingsListButton(
                 icon: "rectangle.inset.filled",
-                heading: "Media Bar",
-                caption: "Slides, filters, and featured content settings",
+                heading: Strings.settingsDynamicContentScreenMediaBar,
+                caption: Strings.settingsDynamicContentScreenMediaBarCaption,
                 action: { settingsRouter.navigate(to: .dynamicContentMediaBar) }
             )
             .focused($focusedRoute, equals: .dynamicContentMediaBar)
 
             SettingsListButton(
                 icon: "play.rectangle",
-                heading: "Local Previews",
-                caption: "Trailer previews, media previews, and preview audio",
+                heading: Strings.settingsDynamicContentScreenLocalPreviews,
+                caption: Strings.settingsDynamicContentScreenLocalPreviewsCaption,
                 action: { settingsRouter.navigate(to: .dynamicContentLocalPreviews) }
             )
             .focused($focusedRoute, equals: .dynamicContentLocalPreviews)
 
             SettingsListButton(
                 icon: "sparkles",
-                heading: "Seasonal Effects",
-                caption: "Decorative seasonal overlays",
+                heading: Strings.settingsDynamicContentScreenSeasonalEffects,
+                caption: Strings.settingsDynamicContentScreenSeasonalEffectsCaption,
                 action: { settingsRouter.navigate(to: .dynamicContentSeasonalEffects) }
             )
             .focused($focusedRoute, equals: .dynamicContentSeasonalEffects)

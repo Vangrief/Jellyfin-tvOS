@@ -13,43 +13,43 @@ struct SettingsPlaybackScreen: View {
 
     private var bitrateLabel: String {
         let value = prefs[UserPreferences.maxBitrate]
-        if value == 0 { return "Auto" }
+        if value == 0 { return Strings.optionAuto }
         if value >= 1_000_000 {
-            return "\(value / 1_000_000) Mbps"
+            return Strings.settingsPlaybackScreenBitrateMbps(value / 1_000_000)
         }
-        return "\(value / 1000) Kbps"
+        return Strings.playerBitrateKbps(value / 1000)
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Video Playback Preferences") {
+        SettingsScreenLayout(title: Strings.settingsPlaybackScreenVideoPlaybackPreferences) {
             if supportsMediaSegments {
                 SettingsListButton(
                     icon: "scissors",
-                    heading: "Skip Intros and Outros",
-                    caption: "Choose action behavior for media segments",
+                    heading: Strings.settingsPlaybackScreenSkipIntrosAndOutros,
+                    caption: Strings.settingsPlaybackScreenChooseActionBehavior,
                     action: { settingsRouter.navigate(to: .playbackMediaSegments) }
                 )
                 .focused($focusedRoute, equals: .playbackMediaSegments)
             } else {
                 SettingsListButton(
                     icon: "scissors",
-                    heading: "Skip Intros and Outros",
-                    caption: "Not available on current server",
+                    heading: Strings.settingsPlaybackScreenSkipIntrosAndOutros,
+                    caption: Strings.settingsPlaybackScreenNotAvailableOnServer,
                     action: { }
                 )
             }
 
             SettingsToggleButton(
                 icon: "pause.circle",
-                heading: "Show Description On Pause",
-                caption: "Display overview while playback is paused",
+                heading: Strings.settingsPlaybackScreenShowDescriptionOnPause,
+                caption: Strings.settingsPlaybackScreenShowDescriptionOnPauseCaption,
                 isOn: prefs.binding(for: UserPreferences.showDescriptionOnPause)
             )
 
             SettingsListButton(
                 icon: "speedometer",
-                heading: "Max Streaming Bitrate",
-                caption: "Upper limit for streaming quality",
+                heading: Strings.settingsPlaybackScreenMaxStreamingBitrate,
+                caption: Strings.settingsPlaybackScreenMaxStreamingBitrateCaption,
                 trailingText: bitrateLabel,
                 action: { settingsRouter.navigate(to: .playbackMaxBitrate) }
             )
@@ -57,8 +57,8 @@ struct SettingsPlaybackScreen: View {
 
             SettingsListButton(
                 icon: "rectangle.badge.checkmark",
-                heading: "Max Resolution",
-                caption: "Upper limit for video resolution",
+                heading: Strings.settingsPlaybackScreenMaxResolution,
+                caption: Strings.settingsPlaybackScreenMaxResolutionCaption,
                 trailingText: prefs[UserPreferences.maxVideoResolution].displayName,
                 action: { settingsRouter.navigate(to: .playbackMaxResolution) }
             )
@@ -66,8 +66,8 @@ struct SettingsPlaybackScreen: View {
 
             SettingsListButton(
                 icon: "arrow.up.left.and.arrow.down.right",
-                heading: "Player Zoom Mode",
-                caption: "Default scaling mode for video playback",
+                heading: Strings.settingsPlaybackScreenPlayerZoomMode,
+                caption: Strings.settingsPlaybackScreenPlayerZoomModeCaption,
                 trailingText: prefs[UserPreferences.playerZoomMode].displayName,
                 action: { settingsRouter.navigate(to: .playbackZoomMode) }
             )
@@ -75,15 +75,15 @@ struct SettingsPlaybackScreen: View {
 
             SettingsToggleButton(
                 icon: "memorychip",
-                heading: "Hardware Decoding",
-                caption: "Use hardware decoding when available",
+                heading: Strings.settingsPlaybackScreenHardwareDecoding,
+                caption: Strings.settingsPlaybackScreenHardwareDecodingCaption,
                 isOn: prefs.binding(for: UserPreferences.hardwareDecoding)
             )
 
             SettingsListButton(
                 icon: "speedometer",
-                heading: "Refresh Rate Switching",
-                caption: "Choose refresh rate switching behavior",
+                heading: Strings.settingsPlaybackScreenRefreshRateSwitching,
+                caption: Strings.settingsPlaybackScreenRefreshRateSwitchingCaption,
                 trailingText: prefs[UserPreferences.refreshRateSwitchingBehavior].displayName,
                 action: { settingsRouter.navigate(to: .playbackRefreshRateSwitching) }
             )
@@ -98,33 +98,33 @@ struct SettingsPlaybackScreen: View {
 
             SettingsListButton(
                 icon: "gobackward",
-                heading: "Resume Rewind",
-                caption: "Seconds to rewind when resuming playback",
+                heading: Strings.settingsPlaybackScreenResumeRewind,
+                caption: Strings.settingsPlaybackScreenResumeRewindCaption,
                 action: { settingsRouter.navigate(to: .playbackResumeSubtractDuration) }
             )
             .focused($focusedRoute, equals: .playbackResumeSubtractDuration)
 
             SettingsListButton(
                 icon: "arrow.uturn.backward",
-                heading: "Unpause Rewind",
-                caption: "Seconds to rewind when unpausing",
+                heading: Strings.settingsPlaybackScreenUnpauseRewind,
+                caption: Strings.settingsPlaybackScreenUnpauseRewindCaption,
                 action: { settingsRouter.navigate(to: .playbackUnpauseRewind) }
             )
             .focused($focusedRoute, equals: .playbackUnpauseRewind)
 
             SettingsListButton(
                 icon: "backward.fill",
-                heading: "Skip Back Length",
-                caption: "Seconds to skip backward",
-                trailingText: "\(prefs[UserPreferences.skipBackLength]) s",
+                heading: Strings.settingsPlaybackScreenSkipBackLength,
+                caption: Strings.settingsPlaybackScreenSkipBackLengthCaption,
+                trailingText: Strings.settingsPlaybackScreenSecondsShort(prefs[UserPreferences.skipBackLength]),
                 action: { settingsRouter.navigate(to: .playbackSkipBackLength) }
             )
             .focused($focusedRoute, equals: .playbackSkipBackLength)
 
             SettingsListButton(
                 icon: "forward.fill",
-                heading: "Skip Forward Length",
-                caption: "Seconds to skip forward",
+                heading: Strings.settingsPlaybackScreenSkipForwardLength,
+                caption: Strings.settingsPlaybackScreenSkipForwardLengthCaption,
                 action: { settingsRouter.navigate(to: .playbackSkipForwardLength) }
             )
             .focused($focusedRoute, equals: .playbackSkipForwardLength)

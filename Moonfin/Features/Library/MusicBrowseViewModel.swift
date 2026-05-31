@@ -58,13 +58,13 @@ final class MusicBrowseViewModel: ObservableObject {
         hasLoaded = true
 
         rows = [
-            MusicRow(id: "latestAudio", title: "Latest Audio"),
-            MusicRow(id: "lastPlayed", title: "Last Played"),
-            MusicRow(id: "favoriteAlbums", title: "Favorite Albums"),
-            MusicRow(id: "playlists", title: "Playlists"),
-            MusicRow(id: "albumArtists", title: "Album Artists"),
-            MusicRow(id: "artists", title: "Artists"),
-            MusicRow(id: "albums", title: "Albums"),
+            MusicRow(id: "latestAudio", title: Strings.musicBrowseViewModelLatestAudio),
+            MusicRow(id: "lastPlayed", title: Strings.lastPlayed),
+            MusicRow(id: "favoriteAlbums", title: Strings.musicBrowseViewModelFavoriteAlbums),
+            MusicRow(id: "playlists", title: Strings.playlists),
+            MusicRow(id: "albumArtists", title: Strings.albumArtists),
+            MusicRow(id: "artists", title: Strings.artists),
+            MusicRow(id: "albums", title: Strings.albums),
         ]
 
         Task {
@@ -130,12 +130,12 @@ final class MusicBrowseViewModel: ObservableObject {
             return ""
         case .playlist:
             if let count = item.childCount {
-                return "\(count) items"
+                return Strings.musicBrowseViewModelItemsCount(count)
             }
             return Strings.playlist
         case .musicArtist:
             if let count = item.albumCount {
-                return "\(count) albums"
+                return Strings.musicBrowseViewModelAlbumsCount(count)
             }
             return Strings.artistSingular
         default:

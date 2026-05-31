@@ -8,80 +8,80 @@ struct SettingsGeneralStyleScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "General Style") {
+        SettingsScreenLayout(title: Strings.settingsGeneralStyleScreenTitle) {
             SettingsListButton(
                 icon: "paintpalette",
-                heading: "Appearance Theme",
-                caption: "Select your app appearance theme",
+                heading: Strings.settingsGeneralStyleScreenAppearanceTheme,
+                caption: Strings.settingsGeneralStyleScreenAppearanceThemeCaption,
                 action: { settingsRouter.navigate(to: .customizationAppearanceTheme) }
             )
             .focused($focusedRoute, equals: .customizationAppearanceTheme)
 
             SettingsListButton(
                 icon: "square.and.arrow.down",
-                heading: "Saved Themes",
-                caption: "Manage downloaded plugin themes on this device",
+                heading: Strings.settingsGeneralStyleScreenSavedThemes,
+                caption: Strings.settingsGeneralStyleScreenSavedThemesCaption,
                 action: { settingsRouter.navigate(to: .customizationSavedThemes) }
             )
             .focused($focusedRoute, equals: .customizationSavedThemes)
 
             SettingsListButton(
                 icon: "circle.lefthalf.filled",
-                heading: "Focus Border Color",
-                caption: "Adjust the focus highlight color",
+                heading: Strings.settingsGeneralStyleScreenFocusBorderColor,
+                caption: Strings.settingsGeneralStyleScreenFocusBorderColorCaption,
                 action: { settingsRouter.navigate(to: .customizationFocusBorder) }
             )
             .focused($focusedRoute, equals: .customizationFocusBorder)
 
             SettingsListButton(
                 icon: "clock",
-                heading: "Clock Display",
-                caption: "Choose when the clock appears",
+                heading: Strings.settingsGeneralStyleScreenClockDisplay,
+                caption: Strings.settingsGeneralStyleScreenClockDisplayCaption,
                 action: { settingsRouter.navigate(to: .customizationClock) }
             )
             .focused($focusedRoute, equals: .customizationClock)
 
             SettingsToggleButton(
                 icon: "calendar.badge.clock",
-                heading: "24-Hour Clock",
-                caption: "Use 24-hour time formatting",
+                heading: Strings.settingsGeneralStyleScreen24HourClock,
+                caption: Strings.settingsGeneralStyleScreen24HourClockCaption,
                 isOn: prefs.binding(for: UserPreferences.use24HourClock)
             )
 
             SettingsToggleButton(
                 icon: "viewfinder.circle",
-                heading: "Focus Expansion Animation",
-                caption: "Scale focused cards for emphasis",
+                heading: Strings.settingsGeneralStyleScreenFocusExpansion,
+                caption: Strings.settingsGeneralStyleScreenFocusExpansionCaption,
                 isOn: prefs.binding(for: UserPreferences.cardFocusExpansion)
             )
 
             SettingsToggleButton(
                 icon: "photo.artframe",
-                heading: "Background Backdrops",
-                caption: "Enable backdrop images in browsing and detail views",
+                heading: Strings.settingsGeneralStyleScreenBackgroundBackdrops,
+                caption: Strings.settingsGeneralStyleScreenBackgroundBackdropsCaption,
                 isOn: prefs.binding(for: UserPreferences.backdropEnabled)
             )
 
             SettingsListButton(
                 icon: "aqi.low",
-                heading: "Browsing Background Blur",
-                caption: "Adjust blur while browsing",
+                heading: Strings.settingsGeneralStyleScreenBrowsingBlur,
+                caption: Strings.settingsGeneralStyleScreenBrowsingBlurCaption,
                 action: { settingsRouter.navigate(to: .moonfinBrowsingBlur) }
             )
             .focused($focusedRoute, equals: .moonfinBrowsingBlur)
 
             SettingsListButton(
                 icon: "aqi.medium",
-                heading: "Details Background Blur",
-                caption: "Adjust blur on detail screens",
+                heading: Strings.settingsGeneralStyleScreenDetailsBlur,
+                caption: Strings.settingsGeneralStyleScreenDetailsBlurCaption,
                 action: { settingsRouter.navigate(to: .moonfinDetailsBlur) }
             )
             .focused($focusedRoute, equals: .moonfinDetailsBlur)
 
             SettingsListButton(
                 icon: "checkmark.circle",
-                heading: "Watched Indicators",
-                caption: "Choose how watched state is shown",
+                heading: Strings.settingsGeneralStyleScreenWatchedIndicators,
+                caption: Strings.settingsGeneralStyleScreenWatchedIndicatorsCaption,
                 action: { settingsRouter.navigate(to: .customizationWatchedIndicator) }
             )
             .focused($focusedRoute, equals: .customizationWatchedIndicator)
@@ -89,15 +89,15 @@ struct SettingsGeneralStyleScreen: View {
 
             SettingsToggleButton(
                 icon: "music.note",
-                heading: "Theme Music",
-                caption: "Play theme music on detail screens",
+                heading: Strings.settingsGeneralStyleScreenThemeMusic,
+                caption: Strings.settingsGeneralStyleScreenThemeMusicCaption,
                 isOn: prefs.binding(for: UserPreferences.themeMusicEnabled)
             )
 
             SettingsListButton(
                 icon: "speaker.wave.2",
-                heading: "Theme Music Volume",
-                caption: "Adjust theme music volume",
+                heading: Strings.settingsGeneralStyleScreenThemeMusicVolume,
+                caption: Strings.settingsGeneralStyleScreenThemeMusicVolumeCaption,
                 action: { settingsRouter.navigate(to: .moonfinThemeMusicVolume) }
             )
             .focused($focusedRoute, equals: .moonfinThemeMusicVolume)

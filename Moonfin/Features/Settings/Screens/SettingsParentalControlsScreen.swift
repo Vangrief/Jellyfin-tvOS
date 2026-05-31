@@ -12,10 +12,10 @@ struct SettingsParentalControlsScreen: View {
     private var repo: ParentalControlsRepository { container.parentalControlsRepository }
 
     var body: some View {
-        SettingsScreenLayout(title: "Parental Controls") {
+        SettingsScreenLayout(title: Strings.parentalControls) {
             SettingsListButton(
                 icon: "chevron.left",
-                heading: "Back",
+                heading: Strings.back,
                 action: { settingsRouter.goBack() }
             )
 
@@ -24,7 +24,7 @@ struct SettingsParentalControlsScreen: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, SpaceTokens.spaceLg)
             } else if availableRatings.isEmpty {
-                Text("No ratings found on your server")
+                Text(Strings.settingsParentalControlsScreenNoRatings)
                     .font(.bodyMd)
                     .foregroundColor(theme.colorScheme.listCaption)
                     .frame(maxWidth: .infinity)
@@ -32,8 +32,8 @@ struct SettingsParentalControlsScreen: View {
 
                 SettingsListButton(
                     icon: "arrow.clockwise",
-                    heading: "Retry Fetch",
-                    caption: "Load ratings from your current server",
+                    heading: Strings.settingsParentalControlsScreenRetryFetch,
+                    caption: Strings.settingsParentalControlsScreenRetryCaption,
                     action: { Task { await loadRatings(forceRefresh: true) } }
                 )
             } else {

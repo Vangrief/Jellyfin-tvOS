@@ -18,58 +18,58 @@ struct SettingsAboutScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "About") {
+        SettingsScreenLayout(title: Strings.about) {
             aboutItem(label: Strings.aboutVersion, value: appVersion)
             aboutItem(label: Strings.aboutBuild, value: buildNumber)
 
             if updatesSupported {
                 SettingsListButton(
                     icon: "arrow.down.circle",
-                    heading: "Check For Updates",
-                    caption: "Check for available app updates",
+                    heading: Strings.settingsAboutScreenCheckForUpdates,
+                    caption: Strings.settingsAboutScreenCheckForUpdatesCaption,
                     action: { }
                 )
             }
 
             SettingsListButton(
                 icon: "chevron.left.forwardslash.chevron.right",
-                heading: "Source Code",
-                caption: "Show QR for repository link",
-                action: { qrItem = AboutLink(title: "Source Code", url: "https://github.com/Moonfin-Client/tvOS") }
+                heading: Strings.settingsAboutScreenSourceCode,
+                caption: Strings.settingsAboutScreenSourceCodeCaption,
+                action: { qrItem = AboutLink(title: Strings.settingsAboutScreenSourceCode, url: "https://github.com/Moonfin-Client/tvOS") }
             )
 
             SettingsListButton(
                 icon: "ladybug",
-                heading: "Report An Issue",
-                caption: "Show QR for issue tracker",
-                action: { qrItem = AboutLink(title: "Report An Issue", url: "https://github.com/Moonfin-Client/tvOS/issues") }
+                heading: Strings.settingsAboutScreenReportAnIssue,
+                caption: Strings.settingsAboutScreenReportAnIssueCaption,
+                action: { qrItem = AboutLink(title: Strings.settingsAboutScreenReportAnIssue, url: "https://github.com/Moonfin-Client/tvOS/issues") }
             )
 
             SettingsListButton(
                 icon: "message",
-                heading: "Join Discord",
-                caption: "Show QR for community invite",
-                action: { qrItem = AboutLink(title: "Join Discord", url: "https://discord.gg/moonfin") }
+                heading: Strings.settingsAboutScreenJoinDiscord,
+                caption: Strings.settingsAboutScreenJoinDiscordCaption,
+                action: { qrItem = AboutLink(title: Strings.settingsAboutScreenJoinDiscord, url: "https://discord.gg/moonfin") }
             )
 
             SettingsListButton(
                 icon: "heart",
-                heading: "Support Moonfin",
-                caption: "Show QR for support link",
-                action: { qrItem = AboutLink(title: "Support Moonfin", url: "https://buymeacoffee.com/moonfin") }
+                heading: Strings.settingsAboutScreenSupportMoonfin,
+                caption: Strings.settingsAboutScreenSupportMoonfinCaption,
+                action: { qrItem = AboutLink(title: Strings.settingsAboutScreenSupportMoonfin, url: "https://buymeacoffee.com/moonfin") }
             )
 
             SettingsListButton(
                 icon: "hand.raised",
-                heading: "Privacy Policy",
-                caption: "Show QR for privacy policy",
-                action: { qrItem = AboutLink(title: "Privacy Policy", url: "https://github.com/Moonfin-Client/tvOS/PRIVACY") }
+                heading: Strings.settingsAboutScreenPrivacyPolicy,
+                caption: Strings.settingsAboutScreenPrivacyPolicyCaption,
+                action: { qrItem = AboutLink(title: Strings.settingsAboutScreenPrivacyPolicy, url: "https://github.com/Moonfin-Client/tvOS/PRIVACY") }
             )
 
             SettingsListButton(
                 icon: "chart.bar",
-                heading: "Telemetry",
-                caption: "Crash reporting and diagnostics",
+                heading: Strings.playerTelemetry,
+                caption: Strings.settingsAboutScreenTelemetryCaption,
                 action: { settingsRouter.navigate(to: .telemetry) }
             )
             .focused($focusedRoute, equals: .telemetry)
@@ -141,7 +141,7 @@ private struct SettingsQRCodeSheet: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, SpaceTokens.spaceMd)
 
-            Button("Done") {
+            Button(Strings.settingsAboutScreenDone) {
                 dismiss()
             }
             .buttonStyle(CleanButtonStyle())

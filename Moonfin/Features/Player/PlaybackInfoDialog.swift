@@ -126,7 +126,7 @@ struct PlaybackInfoDialog: View {
                     InfoRow(label: Strings.playerSinkHdr, value: telemetry["mpv_intent_sink_hdr_capable"] ?? Strings.playerNA)
                     InfoRow(label: Strings.playerContent, value: telemetry["mpv_intent_content_range"] ?? Strings.playerNA)
                     if let dvRouteSource = diagnosticValue(for: "dv_route_source") {
-                        InfoRow(label: "DV Route", value: dvRouteSource)
+                        InfoRow(label: Strings.playbackInfoDialogDvRoute, value: dvRouteSource)
                     }
                 }
                 Group {

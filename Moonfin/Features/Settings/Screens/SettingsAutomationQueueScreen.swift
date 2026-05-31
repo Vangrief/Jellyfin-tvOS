@@ -8,25 +8,25 @@ struct SettingsAutomationQueueScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Automation and Queue") {
+        SettingsScreenLayout(title: Strings.settingsAutomationQueueScreenTitle) {
             SettingsToggleButton(
                 icon: "film.stack",
-                heading: "Cinema Mode",
-                caption: "Enable cinema mode automation",
+                heading: Strings.settingsAutomationQueueScreenCinemaMode,
+                caption: Strings.settingsAutomationQueueScreenCinemaModeCaption,
                 isOn: prefs.binding(for: UserPreferences.cinemaModeEnabled)
             )
 
             SettingsToggleButton(
                 icon: "list.bullet.rectangle",
-                heading: "Media Queuing",
-                caption: "Auto-queue upcoming media",
+                heading: Strings.settingsAutomationQueueScreenMediaQueuing,
+                caption: Strings.settingsAutomationQueueScreenMediaQueuingCaption,
                 isOn: prefs.binding(for: UserPreferences.mediaQueuingEnabled)
             )
 
             SettingsListButton(
                 icon: "forward.end",
-                heading: "Next Up Display",
-                caption: "Choose how the Next Up overlay behaves",
+                heading: Strings.settingsAutomationQueueScreenNextUpDisplay,
+                caption: Strings.settingsAutomationQueueScreenNextUpDisplayCaption,
                 trailingText: prefs[UserPreferences.nextUpBehavior].displayName,
                 action: { settingsRouter.navigate(to: .playbackNextUpBehavior) }
             )
@@ -34,8 +34,8 @@ struct SettingsAutomationQueueScreen: View {
 
             SettingsListButton(
                 icon: "timer",
-                heading: "Next Up Timeout",
-                caption: "Control how long the Next Up prompt stays visible",
+                heading: Strings.settingsAutomationQueueScreenNextUpTimeout,
+                caption: Strings.settingsAutomationQueueScreenNextUpTimeoutCaption,
                 trailingText: "\(prefs[UserPreferences.nextUpTimeout])s",
                 action: { settingsRouter.navigate(to: .playbackNextUpTimeout) }
             )
@@ -43,8 +43,8 @@ struct SettingsAutomationQueueScreen: View {
 
             SettingsListButton(
                 icon: "pause.circle",
-                heading: "Still Watching Prompt",
-                caption: "Choose when playback asks if you are still watching",
+                heading: Strings.settingsAutomationQueueScreenStillWatchingPrompt,
+                caption: Strings.settingsAutomationQueueScreenStillWatchingPromptCaption,
                 action: { settingsRouter.navigate(to: .playbackInactivityPrompt) }
             )
             .focused($focusedRoute, equals: .playbackInactivityPrompt)

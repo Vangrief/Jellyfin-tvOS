@@ -8,11 +8,11 @@ struct SettingsScreensaverScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Screensaver") {
+        SettingsScreenLayout(title: Strings.settingsScreensaverScreenScreensaver) {
             SettingsToggleButton(
                 icon: "moon.fill",
-                heading: "Enabled",
-                caption: "Show screensaver after inactivity",
+                heading: Strings.enabled,
+                caption: Strings.settingsScreensaverScreenEnabledCaption,
                 isOn: Binding(
                     get: { prefs[UserPreferences.screensaverEnabled] },
                     set: { prefs[UserPreferences.screensaverEnabled] = $0 }
@@ -21,8 +21,8 @@ struct SettingsScreensaverScreen: View {
 
             SettingsListButton(
                 icon: "wand.and.stars",
-                heading: "Mode",
-                caption: "Screensaver display mode",
+                heading: Strings.settingsScreensaverScreenMode,
+                caption: Strings.settingsScreensaverScreenModeCaption,
                 trailingText: prefs[UserPreferences.screensaverMode].displayName,
                 action: { settingsRouter.navigate(to: .customizationScreensaverMode) }
             )
@@ -30,17 +30,17 @@ struct SettingsScreensaverScreen: View {
 
             SettingsListButton(
                 icon: "timer",
-                heading: "Timeout",
-                caption: "Minutes before screensaver activates",
-                trailingText: "\(prefs[UserPreferences.screensaverTimeout]) min",
+                heading: Strings.settingsScreensaverScreenTimeout,
+                caption: Strings.settingsScreensaverScreenTimeoutCaption,
+                trailingText: Strings.settingsScreensaverScreenMinShort(prefs[UserPreferences.screensaverTimeout]),
                 action: { settingsRouter.navigate(to: .customizationScreensaverTimeout) }
             )
             .focused($focusedRoute, equals: .customizationScreensaverTimeout)
 
             SettingsListButton(
                 icon: "circle.lefthalf.filled",
-                heading: "Dimming",
-                caption: "Overlay darkness level",
+                heading: Strings.settingsScreensaverScreenDimming,
+                caption: Strings.settingsScreensaverScreenDimmingCaption,
                 trailingText: dimmingCaption,
                 action: { settingsRouter.navigate(to: .customizationScreensaverDimming) }
             )
@@ -48,8 +48,8 @@ struct SettingsScreensaverScreen: View {
 
             SettingsToggleButton(
                 icon: "clock",
-                heading: "Show Clock",
-                caption: "Display bouncing clock on screensaver",
+                heading: Strings.settingsScreensaverScreenShowClock,
+                caption: Strings.settingsScreensaverScreenShowClockCaption,
                 isOn: Binding(
                     get: { prefs[UserPreferences.screensaverShowClock] },
                     set: { prefs[UserPreferences.screensaverShowClock] = $0 }
@@ -58,14 +58,14 @@ struct SettingsScreensaverScreen: View {
 
             SettingsToggleButton(
                 icon: "person.badge.shield.checkmark",
-                heading: "Require Age Rating",
-                caption: "Only show items with a rating set",
+                heading: Strings.settingsScreensaverScreenRequireAgeRating,
+                caption: Strings.settingsScreensaverScreenRequireAgeRatingCaption,
                 isOn: prefs.binding(for: UserPreferences.screensaverAgeRatingRequired)
             )
 
             SettingsListButton(
                 icon: "exclamationmark.triangle",
-                heading: "Max Age Rating",
+                heading: Strings.settingsScreensaverScreenMaxAgeRating,
                 caption: ageRatingCaption,
                 action: { settingsRouter.navigate(to: .customizationScreensaverAgeRating) }
             )
@@ -76,14 +76,14 @@ struct SettingsScreensaverScreen: View {
 
     private var dimmingCaption: String {
         let level = prefs[UserPreferences.screensaverDimmingLevel]
-        return level == 0 ? "Off" : "\(level)%"
+        return level == 0 ? Strings.settingsScreensaverScreenOff : "\(level)%"
     }
 
     private var ageRatingCaption: String {
         let value = prefs[UserPreferences.screensaverAgeRatingMax]
-        if value < 0 { return "Disabled" }
-        if value == 0 { return "All Ages" }
-        return "Up to age \(value)"
+        if value < 0 { return Strings.disabled }
+        if value == 0 { return Strings.settingsScreensaverScreenAllAges }
+        return Strings.settingsScreensaverScreenUpToAge(value)
     }
 }
 
@@ -92,12 +92,14 @@ struct SettingsScreensaverTimeoutScreen: View {
 
     private var current: Int { container.userPreferences[UserPreferences.screensaverTimeout] }
     private let options: [(Int, String)] = [
-        (1, "1 minute"), (2, "2 minutes"), (3, "3 minutes"),
-        (5, "5 minutes"), (10, "10 minutes"), (15, "15 minutes"), (30, "30 minutes"),
+        (1, Strings.settingsScreensaverScreen1Minute), (2, Strings.settingsScreensaverScreenMinutes(2)),
+        (3, Strings.settingsScreensaverScreenMinutes(3)), (5, Strings.settingsScreensaverScreenMinutes(5)),
+        (10, Strings.settingsScreensaverScreenMinutes(10)), (15, Strings.settingsScreensaverScreenMinutes(15)),
+        (30, Strings.settingsScreensaverScreenMinutes(30)),
     ]
 
     var body: some View {
-        SettingsScreenLayout(title: "Timeout") {
+        SettingsScreenLayout(title: Strings.settingsScreensaverScreenTimeout) {
             ForEach(options, id: \.0) { value, label in
                 Button {
                     container.userPreferences[UserPreferences.screensaverTimeout] = value
@@ -117,13 +119,13 @@ struct SettingsScreensaverDimmingScreen: View {
     private let options: [Int] = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
 
     var body: some View {
-        SettingsScreenLayout(title: "Dimming") {
+        SettingsScreenLayout(title: Strings.settingsScreensaverScreenDimming) {
             ForEach(options, id: \.self) { value in
                 Button {
                     container.userPreferences[UserPreferences.screensaverDimmingLevel] = value
                 } label: {
                     ScreensaverOptionContent(
-                        label: value == 0 ? "Off" : "\(value)%",
+                        label: value == 0 ? Strings.settingsScreensaverScreenOff : "\(value)%",
                         isSelected: current == value
                     )
                 }
@@ -138,13 +140,15 @@ struct SettingsScreensaverAgeRatingScreen: View {
 
     private var current: Int { container.userPreferences[UserPreferences.screensaverAgeRatingMax] }
     private let options: [(Int, String)] = [
-        (0, "All Ages"), (5, "Up to age 5"), (10, "Up to age 10"),
-        (13, "Up to age 13"), (14, "Up to age 14"), (16, "Up to age 16"),
-        (18, "Up to age 18"), (21, "Up to age 21"), (-1, "Disabled"),
+        (0, Strings.settingsScreensaverScreenAllAges), (5, Strings.settingsScreensaverScreenUpToAge(5)),
+        (10, Strings.settingsScreensaverScreenUpToAge(10)), (13, Strings.settingsScreensaverScreenUpToAge(13)),
+        (14, Strings.settingsScreensaverScreenUpToAge(14)), (16, Strings.settingsScreensaverScreenUpToAge(16)),
+        (18, Strings.settingsScreensaverScreenUpToAge(18)), (21, Strings.settingsScreensaverScreenUpToAge(21)),
+        (-1, Strings.disabled),
     ]
 
     var body: some View {
-        SettingsScreenLayout(title: "Max Age Rating") {
+        SettingsScreenLayout(title: Strings.settingsScreensaverScreenMaxAgeRating) {
             ForEach(options, id: \.0) { value, label in
                 Button {
                     container.userPreferences[UserPreferences.screensaverAgeRatingMax] = value

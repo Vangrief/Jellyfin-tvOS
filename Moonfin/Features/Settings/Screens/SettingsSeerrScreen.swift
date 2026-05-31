@@ -41,23 +41,23 @@ struct SettingsSeerrScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Seerr") {
+        SettingsScreenLayout(title: Strings.settingsSeerrScreenSeerr) {
             if seerrCapabilityAvailable {
                 SettingsToggleButton(
                     icon: "film",
-                    heading: "Enable Seerr",
-                    caption: "Enable Seerr integration in app navigation",
+                    heading: Strings.settingsSeerrScreenEnableSeerr,
+                    caption: Strings.settingsSeerrScreenEnableSeerrCaption,
                     isOn: seerrEnabledBinding
                 )
             } else {
                 SettingsListButton(
                     icon: "chevron.left",
-                    heading: "Back",
-                    caption: "Return to Integrations",
+                    heading: Strings.back,
+                    caption: Strings.settingsSeerrScreenReturnToIntegrations,
                     action: { settingsRouter.goBack() }
                 )
 
-                Text("Seerr unavailable. Enable the server plugin and plugin sync first.")
+                Text(Strings.settingsSeerrScreenSeerrUnavailable)
                     .font(.caption)
                     .foregroundColor(theme.colorScheme.listCaption)
                     .padding(.horizontal, SpaceTokens.spaceMd)
@@ -67,20 +67,20 @@ struct SettingsSeerrScreen: View {
                 if !isAuthenticated {
                     SettingsListButton(
                         icon: "person.crop.circle",
-                        heading: "Account Type",
-                        caption: "Choose authentication method",
+                        heading: Strings.settingsSeerrScreenAccountType,
+                        caption: Strings.settingsSeerrScreenChooseAuthMethod,
                         trailingText: authType.displayName,
                         action: { authType = authType == .jellyfin ? .local : .jellyfin }
                     )
 
                     SeerrTextInputField(
-                        title: authType == .local ? "Email" : "Username",
+                        title: authType == .local ? Strings.settingsSeerrScreenEmail : Strings.usernameField,
                         text: $usernameOrEmail,
                         icon: "person"
                     )
 
                     SeerrTextInputField(
-                        title: "Password",
+                        title: Strings.passwordField,
                         text: $password,
                         icon: "key"
                     )
@@ -88,16 +88,16 @@ struct SettingsSeerrScreen: View {
                     if isSubmittingAuth {
                         SettingsItemContent(
                             icon: "arrow.triangle.2.circlepath",
-                            heading: "Signing In",
-                            caption: "Authenticating with Seerr"
+                            heading: Strings.settingsSeerrScreenSigningIn,
+                            caption: Strings.settingsSeerrScreenAuthenticatingWithSeerr
                         ) { _ in
                             ProgressView()
                         }
                     } else {
                         SettingsListButton(
                             icon: "arrow.right.circle",
-                            heading: "Sign In",
-                            caption: "Authenticate with your Seerr account",
+                            heading: Strings.settingsSeerrScreenSignIn,
+                            caption: Strings.settingsSeerrScreenAuthenticateWithAccount,
                             action: { Task { await signIn() } }
                         )
                         .disabled(!canSignIn)
@@ -107,7 +107,7 @@ struct SettingsSeerrScreen: View {
                     if let signedInDisplayName {
                         SettingsItemContent(
                             icon: "person.crop.circle.badge.checkmark",
-                            heading: "Signed In As",
+                            heading: Strings.settingsSeerrScreenSignedInAs,
                             caption: nil
                         ) { isFocused in
                             Text(signedInDisplayName)
@@ -118,8 +118,8 @@ struct SettingsSeerrScreen: View {
 
                     SettingsListButton(
                         icon: "rectangle.portrait.and.arrow.right",
-                        heading: "Sign Out",
-                        caption: "Sign out of your Seerr account",
+                        heading: Strings.settingsSeerrScreenSignOut,
+                        caption: Strings.settingsSeerrScreenSignOutCaption,
                         action: { Task { await signOut() } }
                     )
                     .disabled(isSubmittingAuth)
@@ -127,15 +127,15 @@ struct SettingsSeerrScreen: View {
 
                     SettingsToggleButton(
                         icon: "eye.slash",
-                        heading: "Block NSFW",
-                        caption: "Filter adult content from results",
+                        heading: Strings.settingsSeerrScreenBlockNsfw,
+                        caption: Strings.settingsSeerrScreenBlockNsfwCaption,
                         isOn: blockNsfwBinding
                     )
 
                     SettingsListButton(
                         icon: "number",
-                        heading: "Fetch Limit",
-                        caption: "Items per page",
+                        heading: Strings.settingsSeerrScreenFetchLimit,
+                        caption: Strings.settingsSeerrScreenItemsPerPage,
                         trailingText: fetchLimit.displayName,
                         action: { settingsRouter.navigate(to: .seerrFetchLimit) }
                     )
@@ -143,31 +143,31 @@ struct SettingsSeerrScreen: View {
 
                     SettingsToggleButton(
                         icon: "sidebar.leading",
-                        heading: "Show in Navigation",
-                        caption: "Show Seerr in the sidebar",
+                        heading: Strings.settingsSeerrScreenShowInNavigation,
+                        caption: Strings.settingsSeerrScreenShowInNavigationCaption,
                         isOn: showInNavigationBinding
                     )
 
                     SettingsToggleButton(
                         icon: "rectangle.topthird.inset.filled",
-                        heading: "Show in Toolbar",
-                        caption: "Show Seerr button in toolbar",
+                        heading: Strings.settingsSeerrScreenShowInToolbar,
+                        caption: Strings.settingsSeerrScreenShowInToolbarCaption,
                         isOn: showInToolbarBinding
                     )
 
                     SettingsToggleButton(
                         icon: "checkmark.circle",
-                        heading: "Show Request Status",
-                        caption: "Display request status on items",
+                        heading: Strings.settingsSeerrScreenShowRequestStatus,
+                        caption: Strings.settingsSeerrScreenShowRequestStatusCaption,
                         isOn: showRequestStatusBinding
                     )
 
-                    sectionDivider("Discover")
+                    sectionDivider(Strings.settingsSeerrScreenDiscover)
 
                     SettingsListButton(
                         icon: "list.bullet",
-                        heading: "Discover Rows",
-                        caption: "Configure visible rows and order",
+                        heading: Strings.settingsSeerrScreenDiscoverRows,
+                        caption: Strings.settingsSeerrScreenDiscoverRowsCaption,
                         action: { settingsRouter.navigate(to: .seerrRows) }
                     )
                     .focused($focusedRoute, equals: .seerrRows)
@@ -213,7 +213,7 @@ struct SettingsSeerrScreen: View {
         guard let session = container.sessionRepository.currentSession.value,
               let server = container.serverRepository.currentServer.value else {
             if showError {
-                authMessage = "No active Jellyfin session found"
+                authMessage = Strings.settingsSeerrScreenNoActiveSession
             }
             return false
         }
@@ -221,7 +221,7 @@ struct SettingsSeerrScreen: View {
         let jellyfinBaseUrl = server.address.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !jellyfinBaseUrl.isEmpty, !session.accessToken.isEmpty else {
             if showError {
-                authMessage = "No active Jellyfin session found"
+                authMessage = Strings.settingsSeerrScreenNoActiveSession
             }
             return false
         }
@@ -314,7 +314,7 @@ struct SettingsSeerrScreen: View {
         seerrStatus = nil
         isAuthenticated = false
         seerrEnabled = repo.getPreferences()?[SeerrPreferences.enabled] ?? false
-        authMessage = showMessage ? "Signed out" : nil
+        authMessage = showMessage ? Strings.settingsSeerrScreenSignedOut : nil
         await container.pluginSyncService.syncOnStartup()
     }
 
@@ -430,7 +430,7 @@ struct SettingsSeerrScreen: View {
             )
 
             guard response.success else {
-                authMessage = response.error ?? "Sign in failed"
+                authMessage = response.error ?? Strings.settingsSeerrScreenSignInFailed
                 isAuthenticated = false
                 return
             }
@@ -445,7 +445,7 @@ struct SettingsSeerrScreen: View {
             password = ""
             await refreshMoonfinStatus()
             await container.pluginSyncService.syncOnStartup()
-            authMessage = "Signed in"
+            authMessage = Strings.settingsSeerrScreenSignedIn
         } catch {
             authMessage = extractSeerrAuthError(error)
             isAuthenticated = false
@@ -467,10 +467,11 @@ private enum SeerrAuthType {
     case jellyfin
     case local
 
+    @MainActor
     var displayName: String {
         switch self {
         case .jellyfin: return "Jellyfin"
-        case .local: return "Local"
+        case .local: return Strings.settingsSeerrScreenLocal
         }
     }
 

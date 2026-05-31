@@ -115,7 +115,7 @@ struct ItemDetailsView: View {
             subtitleDownloadOverlay
         }
         .confirmationDialog(
-            "Delete Item?",
+            Strings.itemDetailsViewDeleteItemTitle,
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
@@ -650,7 +650,7 @@ struct ItemDetailsView: View {
             if item.type == .episode,
                let season = item.parentIndexNumber,
                let episode = item.indexNumber {
-                infoText("S\(season):E\(episode)")
+                infoText(Strings.itemDetailsViewSeasonEpisode(season, episode))
                 infoSeparator
             }
 
@@ -675,7 +675,7 @@ struct ItemDetailsView: View {
             }
 
             if item.type == .series, let seasonCount = item.childCount, seasonCount > 0 {
-                infoText(seasonCount == 1 ? "1 Season" : "\(seasonCount) Seasons")
+                infoText(seasonCount == 1 ? Strings.itemDetailsViewOneSeason : Strings.itemDetailsViewSeasonsCount(seasonCount))
                 infoSeparator
             }
 
@@ -726,7 +726,7 @@ struct ItemDetailsView: View {
 
     private func seriesStatusBadge(_ status: String) -> some View {
         let isContinuing = status == "continuing"
-        let label = isContinuing ? "Continuing" : "Ended"
+        let label = isContinuing ? Strings.itemDetailsViewContinuing : Strings.itemDetailsViewEnded
         let badgeColor = isContinuing ? Color.green : Color.red
         return Text(label)
             .font(.bodySm)
@@ -1025,18 +1025,18 @@ struct ItemDetailsView: View {
         let studios = item.studios ?? []
 
         if item.type != .playlist, !genres.isEmpty {
-            columns.append(("Genres", genres.joined(separator: ", ")))
+            columns.append((Strings.genres, genres.joined(separator: ", ")))
         }
         if !directors.isEmpty {
-            columns.append((directors.count > 1 ? "Directors" : "Director",
+            columns.append((directors.count > 1 ? Strings.itemDetailsViewDirectors : Strings.itemDetailsViewDirector,
                             directors.map(\.name).joined(separator: ", ")))
         }
         if !writers.isEmpty {
-            columns.append((writers.count > 1 ? "Writers" : "Writer",
+            columns.append((writers.count > 1 ? Strings.itemDetailsViewWriters : Strings.itemDetailsViewWriter,
                             writers.map(\.name).joined(separator: ", ")))
         }
         if !studios.isEmpty {
-            columns.append((studios.count > 1 ? "Studios" : "Studio",
+            columns.append((studios.count > 1 ? Strings.seerrStudios : Strings.itemDetailsViewStudio,
                             studios.compactMap(\.name).joined(separator: ", ")))
         }
         return columns
@@ -1087,12 +1087,12 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private func seriesSections() -> some View {
         if !viewModel.nextUp.isEmpty {
-            detailSection(title: "Next Up", id: "nextUp") {
+            detailSection(title: Strings.nextUp, id: "nextUp") {
                 episodeList(items: viewModel.nextUp)
             }
         }
         if !viewModel.seasons.isEmpty {
-            detailSection(title: "Seasons", id: "seasons") {
+            detailSection(title: Strings.seasons, id: "seasons") {
                 seasonRow
             }
         }
@@ -1103,7 +1103,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private func seasonSections() -> some View {
         if !viewModel.episodes.isEmpty {
-            detailSection(title: "Episodes", id: "episodes") {
+            detailSection(title: Strings.episodes, id: "episodes") {
                 episodeList(items: viewModel.episodes)
             }
         }
@@ -1115,14 +1115,14 @@ struct ItemDetailsView: View {
     private func episodeSections() -> some View {
         chaptersSection
         if let nextEp = viewModel.nextEpisode {
-            detailSection(title: "Next Episode", id: "nextEp") {
+            detailSection(title: Strings.nextEpisode, id: "nextEp") {
                 episodeList(items: [nextEp])
             }
         }
         if viewModel.episodes.count > 1 {
             let others = viewModel.episodes.filter { $0.id != viewModel.item?.id }
             if !others.isEmpty {
-                detailSection(title: "More from This Season", id: "moreEpisodes") {
+                detailSection(title: Strings.itemDetailsViewMoreFromThisSeason, id: "moreEpisodes") {
                     itemRow(items: others, imageType: .thumb, aspectRatio: 16.0/9.0, cardWidth: 400)
                 }
             }
@@ -1140,12 +1140,12 @@ struct ItemDetailsView: View {
         let movies = viewModel.filmography.filter { $0.type == .movie }
         let series = viewModel.filmography.filter { $0.type == .series }
         if !movies.isEmpty {
-            detailSection(title: "Movies", id: "movies") {
+            detailSection(title: Strings.movies, id: "movies") {
                 itemRow(items: movies)
             }
         }
         if !series.isEmpty {
-            detailSection(title: "Series", id: "series") {
+            detailSection(title: Strings.series, id: "series") {
                 itemRow(items: series)
             }
         }
@@ -1157,7 +1157,7 @@ struct ItemDetailsView: View {
             personDateRow(item: item)
 
             if let overview = item.overview, !overview.isEmpty {
-                detailSection(title: "Biography", id: "biography") {
+                detailSection(title: Strings.seerrBiography, id: "biography") {
                     ExpandableBioText(
                         text: overview,
                         isExpanded: $showFullBio
@@ -1192,12 +1192,12 @@ struct ItemDetailsView: View {
         let formatter = Self.dateDisplayFormatter
 
         if let birthDate = item.premiereDate {
-            parts.append("Born \(formatter.string(from: birthDate))")
+            parts.append(Strings.seerrBornDate(formatter.string(from: birthDate)))
             if let deathDate = item.endDate {
-                parts.append("Died \(formatter.string(from: deathDate))")
+                parts.append(Strings.seerrDiedDate(formatter.string(from: deathDate)))
             }
             if let age = Self.calculateAge(from: birthDate, to: item.endDate) {
-                parts.append("Age \(age)")
+                parts.append(Strings.itemDetailsViewAge(age))
             }
         }
 
@@ -1215,7 +1215,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private func musicSections() -> some View {
         if !viewModel.tracks.isEmpty {
-            detailSection(title: "Tracks", id: "tracks") {
+            detailSection(title: Strings.itemDetailsViewTracks, id: "tracks") {
                 interactiveTrackList(items: viewModel.tracks)
             }
         }
@@ -1225,7 +1225,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private func artistSections() -> some View {
         if let item = viewModel.item, let bio = item.overview, !bio.isEmpty {
-            detailSection(title: "Biography", id: "artistBio") {
+            detailSection(title: Strings.seerrBiography, id: "artistBio") {
                 ExpandableBioText(
                     text: bio,
                     isExpanded: $showFullBio
@@ -1233,7 +1233,7 @@ struct ItemDetailsView: View {
             }
         }
         if !viewModel.albums.isEmpty {
-            detailSection(title: "Discography", id: "albums") {
+            detailSection(title: Strings.itemDetailsViewDiscography, id: "albums") {
                 itemRow(items: viewModel.albums, aspectRatio: 1.0)
             }
         }
@@ -1247,17 +1247,17 @@ struct ItemDetailsView: View {
         let other = viewModel.collectionItems.filter { $0.type != .movie && $0.type != .series }
 
         if !movies.isEmpty {
-            detailSection(title: "Movies", id: "collectionMovies") {
+            detailSection(title: Strings.movies, id: "collectionMovies") {
                 itemRow(items: movies, cardWidth: 190)
             }
         }
         if !series.isEmpty {
-            detailSection(title: "Series", id: "collectionSeries") {
+            detailSection(title: Strings.series, id: "collectionSeries") {
                 itemRow(items: series, cardWidth: 190)
             }
         }
         if !other.isEmpty {
-            detailSection(title: "Other", id: "collectionOther") {
+            detailSection(title: Strings.other, id: "collectionOther") {
                 itemRow(items: other, cardWidth: 190)
             }
         }
@@ -1281,7 +1281,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private var castSection: some View {
         if !viewModel.cast.isEmpty {
-            detailSection(title: "Cast & Crew", id: "cast") {
+            detailSection(title: Strings.castAndCrew, id: "cast") {
                 castRow
             }
         }
@@ -1290,7 +1290,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private var similarSection: some View {
         if !viewModel.similar.isEmpty {
-            detailSection(title: "More Like This", id: "similar") {
+            detailSection(title: Strings.moreLikeThis, id: "similar") {
                 itemRow(items: viewModel.similar, cardWidth: 190)
             }
         }
@@ -1299,7 +1299,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private var specialFeaturesSection: some View {
         if !viewModel.specialFeatures.isEmpty {
-            detailSection(title: "Special Features", id: "specials") {
+            detailSection(title: Strings.itemDetailsViewSpecialFeatures, id: "specials") {
                 itemRow(items: viewModel.specialFeatures, imageType: .primary, aspectRatio: 16.0/9.0, cardWidth: 240)
             }
         }
@@ -1308,7 +1308,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private var parentCollectionSection: some View {
         if !viewModel.parentCollectionItems.isEmpty {
-            detailSection(title: viewModel.parentCollectionName ?? "Collection", id: "parentCollection") {
+            detailSection(title: viewModel.parentCollectionName ?? Strings.collectionSingular, id: "parentCollection") {
                 itemRow(items: viewModel.parentCollectionItems, cardWidth: 190)
             }
         }
@@ -1319,7 +1319,7 @@ struct ItemDetailsView: View {
         if let item = viewModel.item,
            let chapters = item.chapters,
            !chapters.isEmpty {
-            detailSection(title: "Chapters", id: "chapters") {
+            detailSection(title: Strings.chapters, id: "chapters") {
                 chapterRow(item: item, chapters: chapters)
             }
         }
@@ -1418,7 +1418,7 @@ struct ItemDetailsView: View {
                                     .stroke(isFocused ? theme.focusBorder.color : .clear, lineWidth: isFocused ? 3 : 0)
                             )
 
-                            Text(chapter.name ?? "Chapter")
+                            Text(chapter.name ?? Strings.itemDetailsViewChapter)
                                 .font(.bodySm)
                                 .foregroundColor(theme.colorScheme.onBackground)
                                 .lineLimit(1)

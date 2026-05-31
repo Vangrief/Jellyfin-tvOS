@@ -10,7 +10,7 @@ struct SettingsPlaybackAdvancedScreen: View {
 
     private var videoStartDelayLabel: String {
         let val = prefs[UserPreferences.videoStartDelay]
-        return val == 0 ? "None" : "\(val) ms"
+        return val == 0 ? Strings.none : Strings.settingsPlaybackAdvancedScreenMilliseconds(val)
     }
 
     private var playbackQualityProfileLabel: String {
@@ -24,11 +24,11 @@ struct SettingsPlaybackAdvancedScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Advanced Playback") {
+        SettingsScreenLayout(title: Strings.settingsPlaybackAdvancedScreenAdvancedPlayback) {
             SettingsListButton(
                 icon: "gauge.with.dots.needle.50percent",
-                heading: "Playback Quality",
-                caption: "Compatibility profile for your Apple TV",
+                heading: Strings.settingsPlaybackAdvancedScreenPlaybackQuality,
+                caption: Strings.settingsPlaybackAdvancedScreenCompatibilityProfile,
                 trailingText: playbackQualityProfileLabel,
                 action: { settingsRouter.navigate(to: .playbackQualityProfile) }
             )
@@ -36,26 +36,26 @@ struct SettingsPlaybackAdvancedScreen: View {
 
             SettingsListButton(
                 icon: "clock.badge.questionmark",
-                heading: "Video Start Delay",
-                caption: "Delay before playback begins",
+                heading: Strings.settingsPlaybackAdvancedScreenVideoStartDelay,
+                caption: Strings.settingsPlaybackAdvancedScreenDelayBeforePlayback,
                 trailingText: videoStartDelayLabel,
                 action: { settingsRouter.navigate(to: .playbackVideoStartDelay) }
             )
             .focused($focusedRoute, equals: .playbackVideoStartDelay)
 
             sectionDivider()
-            sectionHeader("Audio")
-            Text("Audio controls are available under Audio Preferences.")
+            sectionHeader(Strings.playerAudioSection)
+            Text(Strings.settingsPlaybackAdvancedScreenAudioControlsHint)
                 .font(.caption)
                 .foregroundColor(theme.colorScheme.listCaption)
 
             sectionDivider()
-            sectionHeader("Live TV")
+            sectionHeader(Strings.liveTv)
 
             SettingsToggleButton(
                 icon: "play.tv",
-                heading: "Direct Play",
-                caption: "Play live streams directly",
+                heading: Strings.settingsPlaybackAdvancedScreenDirectPlay,
+                caption: Strings.settingsPlaybackAdvancedScreenPlayLiveStreams,
                 isOn: prefs.binding(for: UserPreferences.liveTvDirectPlay)
             )
         }
