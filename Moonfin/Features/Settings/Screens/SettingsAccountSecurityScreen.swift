@@ -68,22 +68,6 @@ struct SettingsAccountSecurityScreen: View {
                 caption: "Ask for confirmation before exiting the app",
                 isOn: prefs.binding(for: UserPreferences.confirmExit)
             )
-
-            SettingsListButton(
-                icon: "questionmark.circle",
-                heading: "PIN Code Management",
-                caption: "(Placeholder) PIN management actions",
-                action: {}
-            )
-            .disabled(true)
-
-            SettingsListButton(
-                icon: "questionmark.circle",
-                heading: "Blocked Ratings Checklist",
-                caption: "(Placeholder) Dynamic checklist for ratings",
-                action: {}
-            )
-            .disabled(true)
         }
         .restoresFocus($focusedRoute)
     }

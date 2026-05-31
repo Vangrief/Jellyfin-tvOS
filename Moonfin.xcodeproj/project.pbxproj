@@ -10,6 +10,7 @@
 		0067621362C7E174DDD695C1 /* BookReaderScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D54C68F798DB2A649ADB83 /* BookReaderScreen.swift */; };
 		00A1958A5335E8638989E525 /* EmbyConnectScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E66A84C747D367236452A40 /* EmbyConnectScreen.swift */; };
 		00CBC11CBD19027BD5F7AFF1 /* PlayerOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CDFE971FC99BC62D4569090 /* PlayerOverlayView.swift */; };
+		1A2B3C4D5E6F70819A0B0001 /* PlayerLoadingOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F70819A0B0002 /* PlayerLoadingOverlay.swift */; };
 		00D47B65F5554173CE1866D5 /* ServerError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 074468E8521DA23AB817B560 /* ServerError.swift */; };
 		0116D073F06403EF1DC56A63 /* SettingsHomeImageTypeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A44937BDAE28873DFD50B9 /* SettingsHomeImageTypeScreen.swift */; };
 		02BF9D15A5003AAAD2474773 /* TrickPlayInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F55D92D362970F9B517268 /* TrickPlayInfo.swift */; };
@@ -514,6 +515,7 @@
 		6BBEE4F3BBDB81FE8A31535C /* JellyfinServerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JellyfinServerClient.swift; sourceTree = "<group>"; };
 		6CB2A8BCB5BB9EC982C998D8 /* ro */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = ro; path = ro.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
 		6CDFE971FC99BC62D4569090 /* PlayerOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerOverlayView.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F70819A0B0002 /* PlayerLoadingOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerLoadingOverlay.swift; sourceTree = "<group>"; };
 		6D817B3079DB381F66B8EBE6 /* ServerWebSocketMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerWebSocketMessage.swift; sourceTree = "<group>"; };
 		6DCC8DBE373D54D9BB8E9F47 /* es-AR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = "es-AR"; path = "es-AR.lproj/Localizable.stringsdict"; sourceTree = "<group>"; };
 		6DEE53CA1312CDBD0BA68460 /* Destination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Destination.swift; sourceTree = "<group>"; };
@@ -803,6 +805,7 @@
 				EC9F9CC8E71DC2A8672CC3DE /* PhotoPlayerViewModel.swift */,
 				94A0596D38402F7197978552 /* PlaybackInfoDialog.swift */,
 				6CDFE971FC99BC62D4569090 /* PlayerOverlayView.swift */,
+				1A2B3C4D5E6F70819A0B0002 /* PlayerLoadingOverlay.swift */,
 				C8C93AFA31BD221AFA4D0257 /* PlayerSeekBar.swift */,
 				8B0571DEA564D22C56A0E7C6 /* PlayerView.swift */,
 				174AA23D2DA086494A3A58ED /* RemoteInputView.swift */,
@@ -1862,6 +1865,7 @@
 				8BF09E744242E20B4C19DABC /* PlaybackManager.swift in Sources */,
 				56136629E620823766D663FE /* PlaybackSurfaceView.swift in Sources */,
 				00CBC11CBD19027BD5F7AFF1 /* PlayerOverlayView.swift in Sources */,
+				1A2B3C4D5E6F70819A0B0001 /* PlayerLoadingOverlay.swift in Sources */,
 				13AA935D6BB99581DF6A3ED7 /* PlayerSeekBar.swift in Sources */,
 				127223D3B2F8CE2B6B03280B /* PlayerView.swift in Sources */,
 				D00BF3EB70D5C5BB65903977 /* PluginSyncConstants.swift in Sources */,

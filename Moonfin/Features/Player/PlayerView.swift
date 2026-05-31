@@ -45,6 +45,7 @@ struct VideoPlayerScreen: View {
         .animation(.easeInOut(duration: 0.3), value: segmentHandler.activeSkipPrompt != nil)
         .animation(.easeInOut(duration: 0.3), value: viewModel.canJumpToLive)
         .animation(.easeInOut(duration: 0.3), value: nextUpManager.promptState)
+        .animation(.easeInOut(duration: 0.25), value: isBuffering)
         .onAppear {
             viewModel.showOverlay()
             awaitingFirstFrame = true
@@ -259,12 +260,14 @@ struct VideoPlayerScreen: View {
     }
 
     private var bufferingOverlay: some View {
-        ProgressView()
-            .tint(.blue)
-            .scaleEffect(1.2)
-            .padding(18)
-            .background(.black.opacity(0.35), in: Circle())
-            .allowsHitTesting(false)
+        ZStack {
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+
+            PlayerLoadingOverlay(label: Strings.playerStreamLoading)
+        }
+        .allowsHitTesting(false)
+        .transition(.opacity)
     }
 
     private var jumpToLiveOverlay: some View {

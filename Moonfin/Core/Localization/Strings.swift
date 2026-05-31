@@ -12,9 +12,14 @@ enum Strings {
         String(format: l(key), arguments: args)
     }
 
+    private static func l(_ key: String, fallback: String) -> String {
+        bundle.localizedString(forKey: key, value: fallback, table: nil)
+    }
+
     // MARK: - General
 
     static var loading: String { l("loading") }
+    static var playerStreamLoading: String { l("player_stream_loading", fallback: "Loading stream…") }
     static var cancel: String { l("btn_cancel") }
     static var ok: String { l("lbl_ok") }
     static var yes: String { l("lbl_yes") }
