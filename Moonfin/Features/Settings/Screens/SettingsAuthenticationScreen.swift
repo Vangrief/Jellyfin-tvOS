@@ -10,11 +10,11 @@ struct SettingsAuthenticationScreen: View {
     private var servers: [Server] { container.serverRepository.storedServers.value }
 
     var body: some View {
-        SettingsScreenLayout(title: "Authentication") {
+        SettingsScreenLayout(title: Strings.authentication) {
             SettingsListButton(
                 icon: "arrow.left.arrow.right",
-                heading: "Sort Servers By",
-                caption: "Order of servers in the list",
+                heading: Strings.settingsAuthenticationScreenSortServersBy,
+                caption: Strings.settingsAuthenticationScreenOrderOfServers,
                 trailingText: authPrefs.sortBy.displayName,
                 action: { settingsRouter.navigate(to: .authenticationSortBy) }
             )
@@ -22,8 +22,8 @@ struct SettingsAuthenticationScreen: View {
 
             SettingsListButton(
                 icon: "person.crop.circle.badge.checkmark",
-                heading: "Auto Sign In",
-                caption: "Automatically sign in on launch",
+                heading: Strings.settingsAuthenticationScreenAutoSignIn,
+                caption: Strings.settingsAuthenticationScreenAutoSignInCaption,
                 trailingText: authPrefs.autoLoginBehavior.displayName,
                 action: { settingsRouter.navigate(to: .authenticationAutoSignIn) }
             )
@@ -31,8 +31,8 @@ struct SettingsAuthenticationScreen: View {
 
             SettingsToggleButton(
                 icon: "lock",
-                heading: "Always Authenticate",
-                caption: "Require authentication every launch",
+                heading: Strings.settingsAuthenticationScreenAlwaysAuthenticate,
+                caption: Strings.settingsAuthenticationScreenAlwaysAuthenticateCaption,
                 isOn: Binding(
                     get: { authPrefs.alwaysAuthenticate },
                     set: { authPrefs.alwaysAuthenticate = $0 }
@@ -44,7 +44,7 @@ struct SettingsAuthenticationScreen: View {
                     .background(theme.colorScheme.listCaption.opacity(0.3))
                     .padding(.vertical, SpaceTokens.spaceXs)
 
-                Text("Servers")
+                Text(Strings.settingsAuthenticationScreenServers)
                     .font(.bodyLg)
                     .fontWeight(.semibold)
                     .foregroundColor(theme.colorScheme.onBackground)

@@ -19,7 +19,7 @@ final class BackgroundService: ObservableObject {
     private var currentIndex: Int = 0
     private var slideshowTimer: AnyCancellable?
     private var lastUpdateTime: Date = .distantPast
-    private weak var preferences: UserPreferences?
+    private var preferences: UserPreferences?
 
     static let slideshowInterval: TimeInterval = 30
     static let transitionDuration: TimeInterval = 0.4
@@ -29,10 +29,6 @@ final class BackgroundService: ObservableObject {
     }
 
     func setBackground(urls: [String], context: BlurContext = .browsing) {
-        if let prefs = preferences, !prefs[UserPreferences.backdropEnabled] {
-            clearBackground()
-            return
-        }
         setBackgroundInternal(urls: urls, context: context)
     }
 
@@ -64,9 +60,11 @@ final class BackgroundService: ObservableObject {
             return
         }
 
+        let nextBlurAmount = resolvedBlurAmount(for: context)
+
         enabled = true
         blurContext = context
-        blurAmount = blurAmount(for: context)
+        blurAmount = nextBlurAmount
         backgrounds = urls
         currentIndex = 0
         currentBackdropUrl = urls.first
@@ -80,19 +78,29 @@ final class BackgroundService: ObservableObject {
         }
     }
 
-    private func blurAmount(for context: BlurContext) -> CGFloat {
-        guard let prefs = preferences else {
-            switch context {
-            case .details: return 20
-            case .browsing: return 20
-            case .none: return 0
-            }
-        }
+    private func resolvedBlurAmount(for context: BlurContext) -> CGFloat {
         switch context {
-        case .details: return CGFloat(prefs[UserPreferences.detailsBackgroundBlur])
-        case .browsing: return CGFloat(prefs[UserPreferences.browsingBackgroundBlur])
+        case .details: return CGFloat(intPreferenceSnapshot(UserPreferences.detailsBackgroundBlur))
+        case .browsing: return CGFloat(intPreferenceSnapshot(UserPreferences.browsingBackgroundBlur))
         case .none: return 0
         }
+    }
+
+    // Read UserDefaults directly here to avoid exclusivity overlap with ObservableObject-backed preference writes.
+    private func boolPreferenceSnapshot(_ preference: Preference<Bool>) -> Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: preference.key) != nil else {
+            return preference.defaultValue
+        }
+        return defaults.bool(forKey: preference.key)
+    }
+
+    private func intPreferenceSnapshot(_ preference: Preference<Int>) -> Int {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: preference.key) != nil else {
+            return preference.defaultValue
+        }
+        return defaults.integer(forKey: preference.key)
     }
 
     private func update() {
@@ -124,9 +132,11 @@ final class BackgroundService: ObservableObject {
             .autoconnect()
             .first()
             .sink { [weak self] _ in
-                guard let self else { return }
-                if advanceIndex { self.currentIndex += 1 }
-                self.update()
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    if advanceIndex { self.currentIndex += 1 }
+                    self.update()
+                }
             }
     }
 }

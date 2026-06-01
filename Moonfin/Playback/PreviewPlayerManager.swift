@@ -257,7 +257,7 @@ final class PreviewPlayerManager: ObservableObject {
     }
 
     private func getFirstEpisodeOfSeries(seriesId: String, userId: String, client: MediaServerClient) async throws -> ServerItem? {
-        let seasons = try await client.itemsApi.getSeasons(seriesId: seriesId, userId: userId)
+        let seasons = try await client.itemsApi.getSeasons(seriesId: seriesId, userId: userId, fields: nil)
         guard let first = seasons.items.first else { return nil }
         return try await getFirstEpisodeOfSeason(seriesId: seriesId, seasonId: first.id, userId: userId, client: client)
     }

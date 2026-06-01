@@ -8,7 +8,52 @@ struct SettingsSubtitlesScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Subtitles") {
+        SettingsScreenLayout(title: Strings.subtitlesSettings) {
+            SettingsListButton(
+                icon: "globe",
+                heading: Strings.settingsSubtitlesScreenDefaultSubtitleLanguage,
+                caption: Strings.settingsSubtitlesScreenPreferredSubtitleLanguage,
+                trailingText: prefs[UserPreferences.defaultSubtitleLanguage].displayName,
+                action: { settingsRouter.navigate(to: .customizationDefaultSubtitleLanguage) }
+            )
+            SettingsToggleButton(
+                icon: "captions.bubble",
+                heading: Strings.settingsSubtitlesScreenDefaultToNoSubtitles,
+                caption: Strings.settingsSubtitlesScreenStartPlaybackWithSubtitlesOff,
+                isOn: prefs.binding(for: UserPreferences.subtitlesDefaultToNone)
+            )
+            SettingsListButton(
+                icon: "paintbrush",
+                heading: Strings.settingsSubtitlesScreenSubtitleCustomization,
+                caption: Strings.settingsSubtitlesScreenAppearanceAndPosition,
+                action: { settingsRouter.navigate(to: .customizationSubtitles) }
+            )
+            SettingsToggleButton(
+                icon: "photo",
+                heading: Strings.settingsSubtitlesScreenPgsDirectPlay,
+                caption: Strings.settingsSubtitlesScreenEnableDirectPlayForPgs,
+                isOn: prefs.binding(for: UserPreferences.pgsDirectPlay)
+            )
+            SettingsToggleButton(
+                icon: "doc.text",
+                heading: Strings.settingsSubtitlesScreenAssSsaDirectPlay,
+                caption: Strings.settingsSubtitlesScreenEnableDirectPlayForAssSsa,
+                isOn: prefs.binding(for: UserPreferences.assDirectPlay)
+            )
+        }
+        .restoresFocus($focusedRoute)
+    }
+}
+
+struct SettingsSubtitleCustomizationScreen: View {
+    @EnvironmentObject var container: AppContainer
+    @EnvironmentObject var settingsRouter: SettingsRouter
+    @FocusState private var focusedRoute: SettingsRoute?
+
+    private var prefs: UserPreferences { container.userPreferences }
+
+    var body: some View {
+        SettingsScreenLayout(title: Strings.settingsSubtitlesScreenSubtitleCustomization) {
             SubtitlePreview(
                 textColor: prefs[UserPreferences.subtitlesTextColor],
                 backgroundColor: prefs[UserPreferences.subtitlesBackgroundColor],
@@ -18,7 +63,7 @@ struct SettingsSubtitlesScreen: View {
 
             SettingsListButton(
                 icon: "textformat",
-                heading: "Text Color",
+                heading: Strings.settingsSubtitlesScreenTextColor,
                 caption: prefs[UserPreferences.subtitlesTextColor].displayName,
                 action: { settingsRouter.navigate(to: .customizationSubtitlesTextColor) }
             )
@@ -26,7 +71,7 @@ struct SettingsSubtitlesScreen: View {
 
             SettingsListButton(
                 icon: "rectangle.fill",
-                heading: "Background Color",
+                heading: Strings.settingsSubtitlesScreenBackgroundColor,
                 caption: prefs[UserPreferences.subtitlesBackgroundColor].displayName,
                 action: { settingsRouter.navigate(to: .customizationSubtitlesBackgroundColor) }
             )
@@ -34,7 +79,7 @@ struct SettingsSubtitlesScreen: View {
 
             SettingsListButton(
                 icon: "square.dashed",
-                heading: "Edge Color",
+                heading: Strings.settingsSubtitlesScreenEdgeColor,
                 caption: prefs[UserPreferences.subtitlesStrokeColor].displayName,
                 action: { settingsRouter.navigate(to: .customizationSubtitlesEdgeColor) }
             )
@@ -42,8 +87,8 @@ struct SettingsSubtitlesScreen: View {
 
             SettingsListButton(
                 icon: "textformat.size",
-                heading: "Text Size",
-                caption: "Font size for subtitles",
+                heading: Strings.settingsSubtitlesScreenTextSize,
+                caption: Strings.settingsSubtitlesScreenFontSizeForSubtitles,
                 trailingText: "\(prefs[UserPreferences.subtitlesTextSize])pt",
                 action: { settingsRouter.navigate(to: .customizationSubtitlesTextSize) }
             )
@@ -51,26 +96,12 @@ struct SettingsSubtitlesScreen: View {
 
             SettingsListButton(
                 icon: "arrow.up.and.down",
-                heading: "Offset Position",
-                caption: "Distance from bottom edge",
+                heading: Strings.settingsSubtitlesScreenOffsetPosition,
+                caption: Strings.settingsSubtitlesScreenDistanceFromBottomEdge,
                 trailingText: "\(prefs[UserPreferences.subtitlesOffsetPosition])%",
                 action: { settingsRouter.navigate(to: .customizationSubtitlesOffset) }
             )
             .focused($focusedRoute, equals: .customizationSubtitlesOffset)
-
-            SettingsToggleButton(
-                icon: "captions.bubble",
-                heading: "Default to None",
-                caption: "Start playback without subtitles",
-                isOn: prefs.binding(for: UserPreferences.subtitlesDefaultToNone)
-            )
-
-            SettingsToggleButton(
-                icon: "textformat.alt",
-                heading: "Override ASS Styles",
-                caption: "Apply your style settings to ASS/SSA subtitles",
-                isOn: prefs.binding(for: UserPreferences.subtitlesOverrideASSStyles)
-            )
         }
         .restoresFocus($focusedRoute)
     }
@@ -94,7 +125,7 @@ private struct SubtitlePreview: View {
                 .fill(Color.black.opacity(0.85))
                 .frame(height: 120)
 
-            Text("Sample Subtitle Text")
+            Text(Strings.settingsSubtitlesScreenSampleSubtitleText)
                 .font(.system(size: previewFontSize, weight: .medium))
                 .foregroundColor(textColor.swiftUIColor)
                 .padding(.horizontal, 12)

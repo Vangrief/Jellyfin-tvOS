@@ -15,8 +15,9 @@ struct ChapterSelectionView: View {
             VStack(alignment: .leading, spacing: SpaceTokens.spaceSm) {
                 Text(Strings.chapters)
                     .font(.title2xl)
-                    .foregroundColor(.white)
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonPrimaryColor : .white)
                     .padding(.horizontal, 80)
+                    .neonTextGlow(theme, active: theme.isNeonPulseTheme)
 
                 ScrollViewReader { proxy in
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -36,6 +37,12 @@ struct ChapterSelectionView: View {
                             withAnimation {
                                 proxy.scrollTo(currentIdx, anchor: .center)
                             }
+                        }
+                    }
+                    .onChange(of: focusedIndex) { newIndex in
+                        guard let newIndex else { return }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            proxy.scrollTo(newIndex, anchor: .center)
                         }
                     }
                 }
@@ -58,6 +65,7 @@ struct ChapterSelectionView: View {
 
     private func chapterCard(chapter: ServerChapter, index: Int) -> some View {
         let isCurrent = index == viewModel.currentChapterIndex()
+        let isFocused = focusedIndex == index
 
         return Button {
             viewModel.seekToChapter(chapter)
@@ -89,18 +97,26 @@ struct ChapterSelectionView: View {
                         RoundedRectangle(cornerRadius: RadiusTokens.small)
                             .stroke(theme.accent, lineWidth: 2)
                     }
+
+                    if isFocused {
+                        RoundedRectangle(cornerRadius: RadiusTokens.small + 2)
+                            .stroke(Color.white.opacity(0.95), lineWidth: 4)
+                            .padding(-2)
+                    }
                 }
                 .cornerRadius(RadiusTokens.small)
+                .clipped()
 
                 Text(chapter.name ?? Strings.playerChapter(index + 1))
                     .font(.bodySm)
-                    .foregroundColor(.white)
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonPrimaryColor : .white)
                     .lineLimit(1)
                     .frame(width: cardWidth, alignment: .leading)
+                    .neonTextGlow(theme, active: theme.isNeonPulseTheme)
 
                 Text(formatChapterTime(ticks: chapter.startPositionTicks))
                     .font(.caption2xs)
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : .white.opacity(0.6))
             }
         }
         .buttonStyle(PopupCardButtonStyle())

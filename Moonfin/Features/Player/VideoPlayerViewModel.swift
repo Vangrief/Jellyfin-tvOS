@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import OSLog
 
 @MainActor
 final class VideoPlayerViewModel: ObservableObject {
@@ -7,11 +8,13 @@ final class VideoPlayerViewModel: ObservableObject {
     @Published var audioSelectionVisible = false
     @Published var subtitleSelectionVisible = false
     @Published var speedSelectionVisible = false
+    @Published var qualitySelectionVisible = false
     @Published var chapterSelectionVisible = false
     @Published var castListVisible = false
     @Published var channelListVisible = false
     @Published var playbackInfoVisible = false
     @Published var subtitleDownloadVisible = false
+    @Published var pauseDescriptionVisible = false
     @Published var subtitleDelay: TimeInterval = 0
     @Published var isScrubbing = false
     @Published var scrubPosition: Float = 0
@@ -25,30 +28,54 @@ final class VideoPlayerViewModel: ObservableObject {
 
     private var hideTask: Task<Void, Never>?
     private var scrubSeekTask: Task<Void, Never>?
+    private var scrubIdleTask: Task<Void, Never>?
     private var castPrefetchTask: Task<Void, Never>?
     private var livePauseStartedAt: Date?
     private var jumpToLivePromptDismissed = false
     private var lastExitCommandHandledAt: CFAbsoluteTime = 0
+    private var didDebouncedSeekRun = false
+    private var lastDebouncedSeekTarget: TimeInterval?
     private var cancellables = Set<AnyCancellable>()
+    private let logger = Logger(subsystem: "org.moonfin.appletv", category: "VideoPlayerViewModel")
     private let overlayTimeout: TimeInterval = 5
-    private let endTimeFormatter: DateFormatter = {
+    private let scrubIdleTimeout: TimeInterval = 3
+    private static let endTimeTwelveHourFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "h:mm a"
         return f
     }()
 
-    let skipBackSeconds: TimeInterval = 10
+    private static let endTimeTwentyFourHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
+    var skipBackSeconds: TimeInterval {
+        playbackManager.skipBackSeconds
+    }
 
     var skipForwardSeconds: TimeInterval {
         playbackManager.skipForwardSeconds
     }
 
+    var nextUpBehavior: NextUpBehavior {
+        playbackManager.nextUpBehaviorPreference
+    }
+
+    var shouldShowPauseDescription: Bool {
+        playbackManager.showDescriptionOnPausePreference
+    }
+
     private var _cachedTitle: String = ""
     private var _cachedSubtitle: String = ""
+    private var _cachedLogoUrl: String?
     private var _cachedChapters: [ServerChapter] = []
     private var _cachedCast: [ServerPerson] = []
     private var _cachedEntryId: String?
     private var _castResolvedItemId: String?
+
+    private func subtitleDebug(_ message: @autoclosure () -> String) {}
 
     var canDownloadSubtitles: Bool {
         guard let item = playbackManager.currentEntry?.item else { return false }
@@ -58,8 +85,21 @@ final class VideoPlayerViewModel: ObservableObject {
 
     var player: MpvPlayerWrapper { playbackManager.player }
 
+    var serverSubtitleStreams: [ServerMediaStream] {
+        playbackManager.currentStreamInfo?.subtitleStreams.filter { $0.type == .subtitle } ?? []
+    }
+
+    var usesServerSubtitleStreams: Bool {
+        !serverSubtitleStreams.isEmpty
+    }
+
+    var activeServerSubtitleStreamIndex: Int? {
+        playbackManager.activeSubtitleStreamIndex
+    }
+
     var title: String { ensureItemCache(); return _cachedTitle }
     var subtitle: String { ensureItemCache(); return _cachedSubtitle }
+    var logoUrl: String? { ensureItemCache(); return _cachedLogoUrl }
     var chapters: [ServerChapter] { ensureItemCache(); return _cachedChapters }
     var castMembers: [ServerPerson] { ensureItemCache(); return _cachedCast }
     var hasChapters: Bool { chapters.count > 1 }
@@ -73,21 +113,37 @@ final class VideoPlayerViewModel: ObservableObject {
         syncPlayManager?.state.enabled == true
     }
 
+    var selectedMaxBitrate: Int {
+        playbackManager.maxBitratePreference
+    }
+
+    var maxBitrateOptions: [(Int, String)] {
+        Self.maxBitrateOptions
+    }
+
     var nextItemImageUrl: String? {
         guard let item = nextQueueItem else { return nil }
         return playbackManager.imageUrl(for: item, type: .backdrop)
     }
 
-    var positionText: String {
+    var currentTimeText: String {
         let current = isScrubbing ? TimeInterval(scrubPosition) * player.duration : player.currentTime
-        return "\(formatTime(current)) / \(formatTime(player.duration))"
+        return formatTime(current)
+    }
+
+    var durationText: String {
+        formatTime(player.duration)
     }
 
     var endTimeText: String {
-        let remaining = player.duration - player.currentTime
+        let current = isScrubbing ? TimeInterval(scrubPosition) * player.duration : player.currentTime
+        let remaining = player.duration - current
         guard remaining.isFinite && remaining > 0 else { return "" }
         let endDate = Date().addingTimeInterval(remaining)
-        return "Ends at \(endTimeFormatter.string(from: endDate))"
+        let formatter = playbackManager.use24HourClockPreference
+            ? Self.endTimeTwentyFourHourFormatter
+            : Self.endTimeTwelveHourFormatter
+        return Strings.endsAt(formatter.string(from: endDate))
     }
 
     init(
@@ -105,6 +161,7 @@ final class VideoPlayerViewModel: ObservableObject {
         bindObjectWillChange(playbackManager.player.$currentAudioTrackIndex.removeDuplicates())
         bindObjectWillChange(playbackManager.player.$currentSubtitleTrackIndex.removeDuplicates())
         bindObjectWillChange(playbackManager.player.$rate.removeDuplicates())
+        bindObjectWillChange(playbackManager.$currentStreamInfo)
 
         playbackManager.player.$currentTime
             .throttle(for: .milliseconds(500), scheduler: DispatchQueue.main, latest: true)
@@ -163,21 +220,36 @@ final class VideoPlayerViewModel: ObservableObject {
         guard let item = playbackManager.currentEntry?.item else {
             _cachedTitle = ""
             _cachedSubtitle = ""
+            _cachedLogoUrl = nil
             _cachedChapters = []
             _cachedCast = []
             return
         }
 
+        _cachedLogoUrl = playbackManager.logoUrl(for: item)
+
         if let series = item.seriesName {
-            var episodeLabel = series
-            if let s = item.parentIndexNumber { episodeLabel += " — S\(s)" }
-            if let e = item.indexNumber { episodeLabel += "E\(e)" }
-            _cachedTitle = episodeLabel
+            _cachedTitle = series
+
+            var seasonEpisode = ""
+            if let season = item.parentIndexNumber {
+                seasonEpisode = "S\(season)"
+            }
+            if let episode = item.indexNumber {
+                seasonEpisode += seasonEpisode.isEmpty ? "E\(episode)" : ":E\(episode)"
+            }
+
+            if seasonEpisode.isEmpty {
+                _cachedSubtitle = item.name
+            } else if item.name.isEmpty {
+                _cachedSubtitle = seasonEpisode
+            } else {
+                _cachedSubtitle = "\(seasonEpisode) - \(item.name)"
+            }
         } else {
             _cachedTitle = item.name
+            _cachedSubtitle = ""
         }
-
-        _cachedSubtitle = item.seriesName != nil ? item.name : ""
         _cachedChapters = item.chapters ?? []
 
         _cachedCast = item.people ?? []
@@ -244,12 +316,17 @@ final class VideoPlayerViewModel: ObservableObject {
     func beginScrub() {
         isScrubbing = true
         scrubPosition = player.position
+        didDebouncedSeekRun = false
+        lastDebouncedSeekTarget = nil
         hideTask?.cancel()
+        scrubIdleTask?.cancel()
     }
 
     func updateScrub(by delta: Float) {
         scrubPosition = max(0, min(1, scrubPosition + delta))
+        didDebouncedSeekRun = false
         debouncedSeek()
+        restartScrubIdleTimer()
     }
 
     func updateScrub(bySeconds deltaSeconds: TimeInterval) {
@@ -266,24 +343,51 @@ final class VideoPlayerViewModel: ObservableObject {
             guard !Task.isCancelled, isScrubbing else { return }
             let target = TimeInterval(scrubPosition) * player.duration
             playbackManager.seek(to: target)
+            didDebouncedSeekRun = true
+            lastDebouncedSeekTarget = target
+        }
+    }
+
+    private func restartScrubIdleTimer() {
+        scrubIdleTask?.cancel()
+        scrubIdleTask = Task {
+            try? await Task.sleep(nanoseconds: UInt64(scrubIdleTimeout * 1_000_000_000))
+            guard !Task.isCancelled, isScrubbing else { return }
+            commitScrub()
         }
     }
 
     func commitScrub() {
         guard isScrubbing else { return }
+        scrubIdleTask?.cancel()
         scrubSeekTask?.cancel()
         let target = TimeInterval(scrubPosition) * player.duration
         if let spm = syncPlayManager, spm.state.enabled {
             spm.requestSeek(to: target)
         } else {
-            playbackManager.seek(to: target)
+            let shouldSeek: Bool
+            if !didDebouncedSeekRun {
+                shouldSeek = true
+            } else if let lastDebouncedSeekTarget {
+                shouldSeek = abs(lastDebouncedSeekTarget - target) > 0.25
+            } else {
+                shouldSeek = true
+            }
+            if shouldSeek {
+                playbackManager.seek(to: target)
+            }
         }
+        didDebouncedSeekRun = false
+        lastDebouncedSeekTarget = nil
         isScrubbing = false
         resetHideTimer()
     }
 
     func cancelScrub() {
+        scrubIdleTask?.cancel()
         scrubSeekTask?.cancel()
+        didDebouncedSeekRun = false
+        lastDebouncedSeekTarget = nil
         isScrubbing = false
         resetHideTimer()
     }
@@ -306,6 +410,8 @@ final class VideoPlayerViewModel: ObservableObject {
             subtitleSelectionVisible = true
         case .speed:
             speedSelectionVisible = true
+        case .quality:
+            qualitySelectionVisible = true
         }
     }
 
@@ -313,12 +419,13 @@ final class VideoPlayerViewModel: ObservableObject {
         audioSelectionVisible = false
         subtitleSelectionVisible = false
         speedSelectionVisible = false
+        qualitySelectionVisible = false
         overlayVisible = true
         resetHideTimer()
     }
 
     var trackSelectionVisible: Bool {
-        audioSelectionVisible || subtitleSelectionVisible || speedSelectionVisible
+        audioSelectionVisible || subtitleSelectionVisible || speedSelectionVisible || qualitySelectionVisible
     }
 
     func showChapterSelection() {
@@ -617,6 +724,41 @@ final class VideoPlayerViewModel: ObservableObject {
         playbackManager.setRate(speed)
     }
 
+    func setMaxBitrate(_ bitrate: Int) {
+        playbackManager.setMaxBitrate(bitrate)
+        objectWillChange.send()
+    }
+
+    func selectSubtitle(serverStream: ServerMediaStream) {
+        subtitleDebug(
+            "subtitle_ui_select stream_index=\(serverStream.index) external=\(serverStream.isExternal) title=\(serverStream.displayTitle ?? "-") language=\(serverStream.language ?? "-") active_stream_index=\(self.activeServerSubtitleStreamIndex ?? -999) active_track=\(self.player.currentSubtitleTrackIndex)"
+        )
+        playbackManager.selectSubtitleStream(serverStream)
+        resetHideTimer()
+    }
+
+    func subtitleLabel(for stream: ServerMediaStream) -> String {
+        if let displayTitle = normalizedSubtitleText(stream.displayTitle) {
+            return displayTitle
+        }
+        if let language = normalizedSubtitleText(stream.language) {
+            return language
+        }
+        return Strings.nativePlayerWrapperTrackX(stream.index)
+    }
+
+    func subtitleDetail(for stream: ServerMediaStream) -> String? {
+        var parts: [String] = []
+        if stream.isForced {
+            parts.append(Strings.videoPlayerViewModelForced)
+        }
+        if stream.isExternal {
+            parts.append(Strings.playerExternal)
+        }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " | ")
+    }
+
     func adjustSubtitleDelay(by delta: TimeInterval) {
         subtitleDelay += delta
         player.setSubtitleDelay(subtitleDelay)
@@ -637,5 +779,33 @@ final class VideoPlayerViewModel: ObservableObject {
             return String(format: "%d:%02d:%02d", h, m, s)
         }
         return String(format: "%d:%02d", m, s)
+    }
+
+    private func normalizedSubtitleText(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static var maxBitrateOptions: [(Int, String)] {
+        [
+        (0, Strings.optionAuto),
+        (120_000_000, "120 Mbps"),
+        (80_000_000, "80 Mbps"),
+        (60_000_000, "60 Mbps"),
+        (40_000_000, "40 Mbps"),
+        (20_000_000, "20 Mbps"),
+        (15_000_000, "15 Mbps"),
+        (10_000_000, "10 Mbps"),
+        (8_000_000, "8 Mbps"),
+        (6_000_000, "6 Mbps"),
+        (4_000_000, "4 Mbps"),
+        (3_000_000, "3 Mbps"),
+        (2_000_000, "2 Mbps"),
+        (1_500_000, "1.5 Mbps"),
+        (1_000_000, "1 Mbps"),
+        (700_000, "0.7 Mbps"),
+        (420_000, "0.42 Mbps")
+        ]
     }
 }

@@ -7,6 +7,7 @@ private enum SidebarFocusItem: Hashable {
 
 struct LeftSidebar: View {
     @StateObject private var viewModel: NavbarViewModel
+    @EnvironmentObject var theme: MoonfinTheme
     @EnvironmentObject var router: NavigationRouter
     @EnvironmentObject var settingsRouter: SettingsRouter
     @EnvironmentObject var sessionInitializer: SessionInitializer
@@ -16,23 +17,30 @@ struct LeftSidebar: View {
     @State private var sidebarHadFocus = false
     @State private var allowAutoExpansion = false
     @State private var showShuffleDialog = false
+    @State private var showAccountSwitcherDialog = false
+    @State private var accountSwitcherBusy = false
+    @State private var accountSwitcherAccounts: [AccountSwitcherAccount] = []
     @State private var returnFocusItem: SidebarFocusItem = .home
+    @State private var handoffInFlight = false
     @FocusState private var focusedItem: SidebarFocusItem?
 
     let onMoveToContent: (() -> Void)?
     let onSidebarEntered: (() -> Void)?
+    let requestFocusToken: Int
 
-    static let sidebarInset: CGFloat = 90
-    private static let expandedWidth: CGFloat = 560
+    static let sidebarInset: CGFloat = 104
+    private static let expandedWidth: CGFloat = 640
 
     init(
         container: AppContainer,
         onMoveToContent: (() -> Void)? = nil,
-        onSidebarEntered: (() -> Void)? = nil
+        onSidebarEntered: (() -> Void)? = nil,
+        requestFocusToken: Int = 0
     ) {
         _viewModel = StateObject(wrappedValue: NavbarViewModel(container: container))
         self.onMoveToContent = onMoveToContent
         self.onSidebarEntered = onSidebarEntered
+        self.requestFocusToken = requestFocusToken
     }
 
     private var hasVisibleLibraries: Bool {
@@ -78,11 +86,88 @@ struct LeftSidebar: View {
         onMoveToContent?()
     }
 
+    private var visibleSidebarItems: [SidebarFocusItem] {
+        var items: [SidebarFocusItem] = [.user, .home, .search]
+        if viewModel.showShuffle { items.append(.shuffle) }
+        if viewModel.showFavorites { items.append(.favorites) }
+        if viewModel.showGenres { items.append(.genres) }
+        if viewModel.showSeerrInNavigation { items.append(.seerr) }
+        if hasVisibleLibraries { items.append(.libraries) }
+        if viewModel.showSyncPlay { items.append(.syncPlay) }
+        items.append(.settings)
+        return items
+    }
+
+    private func sidebarCycleIndex(for item: SidebarFocusItem) -> Int? {
+        visibleSidebarItems.firstIndex(of: item)
+    }
+
     private func handoffFocusToContent() {
         if let current = focusedItem {
             returnFocusItem = current
         }
+        handoffInFlight = true
         onMoveToContent?()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            handoffInFlight = false
+        }
+    }
+
+    private func presentAccountSwitcher() {
+        accountSwitcherAccounts = viewModel.accountSwitcherAccounts()
+        accountSwitcherBusy = false
+        showAccountSwitcherDialog = true
+    }
+
+    private func navigateToStartup(restoredServerId: UUID?, restoredUserId: UUID? = nil, suppressAutoLogin: Bool) {
+        sessionInitializer.endSwitchUserTransition()
+        sessionInitializer.suppressAutoLogin = suppressAutoLogin
+        sessionInitializer.restoredServerId = restoredServerId
+        sessionInitializer.restoredUserId = restoredUserId
+        router.switchFlow(to: .startup)
+    }
+
+    private func handleAccountSelection(_ account: AccountSwitcherAccount) {
+        if account.isActive {
+            showAccountSwitcherDialog = false
+            return
+        }
+
+        accountSwitcherBusy = true
+        accountSwitcherBusy = false
+        showAccountSwitcherDialog = false
+        sessionInitializer.beginSwitchUserTransition()
+        sessionInitializer.suppressAutoLogin = false
+        sessionInitializer.restoredUserId = account.user.id
+        sessionInitializer.restoredServerId = nil
+        router.switchFlow(to: .startup)
+        router.navigate(to: .serverUsers(serverId: account.server.id))
+    }
+
+    private func handleSignOutCurrent() {
+        accountSwitcherBusy = true
+        viewModel.signOutCurrentSession()
+        accountSwitcherBusy = false
+        showAccountSwitcherDialog = false
+        navigateToStartup(restoredServerId: nil, suppressAutoLogin: true)
+    }
+
+    private func handleSignOutAllUsers() {
+        accountSwitcherBusy = true
+        viewModel.signOutAllStoredAccounts()
+        accountSwitcherBusy = false
+        showAccountSwitcherDialog = false
+        navigateToStartup(restoredServerId: nil, suppressAutoLogin: true)
+    }
+
+    private func handleSelectServer() {
+        showAccountSwitcherDialog = false
+        navigateToStartup(restoredServerId: nil, suppressAutoLogin: true)
+    }
+
+    private func handleAddUser() {
+        showAccountSwitcherDialog = false
+        navigateToStartup(restoredServerId: viewModel.currentServerId, suppressAutoLogin: true)
     }
 
     var body: some View {
@@ -99,6 +184,12 @@ struct LeftSidebar: View {
                     handoffFocusToContent()
                 }
             }
+            .onChange(of: requestFocusToken) { token in
+                guard token > 0 else { return }
+                DispatchQueue.main.async {
+                    focusedItem = normalizedFocusItem(returnFocusItem)
+                }
+            }
             .onChange(of: focusedItem) { newValue in
                 if let newValue {
                     if allowAutoExpansion {
@@ -112,6 +203,7 @@ struct LeftSidebar: View {
                             if allowAutoExpansion {
                                 applyExpansionState(for: target)
                             }
+                            guard !handoffInFlight else { return }
                             DispatchQueue.main.async {
                                 focusedItem = target
                             }
@@ -125,27 +217,46 @@ struct LeftSidebar: View {
                     isLibraryExpanded = false
                 }
             }
-            .sheet(isPresented: $showShuffleDialog) {
+            .fullScreenCover(isPresented: $showShuffleDialog) {
                 ShuffleOptionsDialog(
-                    libraries: viewModel.userViews,
-                    onQuickShuffle: {
+                    libraries: viewModel.shuffleLibraries,
+                    onSelectItem: { item in
                         showShuffleDialog = false
-                        viewModel.performShuffle(router: router)
-                        handoffFocusToContent()
-                    },
-                    onLibraryShuffle: { libraryId in
-                        showShuffleDialog = false
-                        viewModel.performShuffle(libraryId: libraryId, router: router)
-                        handoffFocusToContent()
-                    },
-                    onGenreShuffle: { genreName in
-                        showShuffleDialog = false
-                        viewModel.performShuffle(genreName: genreName, router: router)
+                        router.navigatePrimaryToItem(item)
                         handoffFocusToContent()
                     },
                     onDismiss: { showShuffleDialog = false },
-                    fetchGenres: { await viewModel.fetchGenres() }
+                    fetchGenres: { libraryId in await viewModel.fetchGenres(libraryId: libraryId) },
+                    fetchPreviewItems: { libraryId, genreName in
+                        await viewModel.fetchShufflePreviewItems(libraryId: libraryId, genreName: genreName)
+                    },
+                    fetchRatings: { item in
+                        await viewModel.fetchShuffleRatings(for: item)
+                    },
+                    posterUrlForItem: { item in
+                        viewModel.shufflePosterUrl(for: item)
+                    },
+                    enableAdditionalRatings: viewModel.enableAdditionalRatings
                 )
+            }
+            .fullScreenCover(isPresented: $showAccountSwitcherDialog) {
+                AccountSwitcherDialog(
+                    accounts: accountSwitcherAccounts,
+                    isBusy: accountSwitcherBusy,
+                    onSelectAccount: handleAccountSelection,
+                    onAddUser: handleAddUser,
+                    onSelectServer: handleSelectServer,
+                    onSignOutCurrent: handleSignOutCurrent,
+                    onSignOutAllUsers: handleSignOutAllUsers,
+                    onDismiss: { showAccountSwitcherDialog = false }
+                )
+            }
+            .onChange(of: showAccountSwitcherDialog) { showing in
+                if showing {
+                    viewModel.addScreensaverLock()
+                } else {
+                    viewModel.removeScreensaverLock()
+                }
             }
     }
 
@@ -173,13 +284,19 @@ struct LeftSidebar: View {
                             viewModel.overlayColor.opacity(viewModel.overlayOpacity * 1.9),
                             viewModel.overlayColor.opacity(viewModel.overlayOpacity * 1.7),
                             viewModel.overlayColor.opacity(viewModel.overlayOpacity * 1.2),
-                            Color.clear
+                            viewModel.overlayColor.opacity(theme.isNeonPulseTheme ? viewModel.overlayOpacity * 0.18 : 0.0)
                         ],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .frame(width: isExpanded ? Self.expandedWidth : 0)
+                .overlay(alignment: .trailing) {
+                    if let navBorder = theme.activeSpec.borders.navBorder {
+                        Rectangle()
+                            .stroke(navBorder.color.color, lineWidth: navBorder.width)
+                    }
+                }
         }
         .clipped()
         .animation(.easeOut(duration: 0.18), value: isExpanded)
@@ -191,23 +308,20 @@ struct LeftSidebar: View {
             systemIcon: "person.fill",
             imageUrl: viewModel.userImageUrl,
             label: viewModel.userName.isEmpty ? "User" : viewModel.userName,
+            cycleIndex: sidebarCycleIndex(for: .user),
             isExpanded: isExpanded,
             isFocused: focusedItem == .user,
-            action: {
-                let serverId = viewModel.switchUser()
-                sessionInitializer.suppressAutoLogin = true
-                sessionInitializer.restoredServerId = serverId
-                router.switchFlow(to: .startup)
-            }
+            action: { presentAccountSwitcher() }
         )
         .focused($focusedItem, equals: .user)
     }
 
     private var sidebarItems: some View {
-        VStack(spacing: 28) {
+        VStack(spacing: 32) {
             SidebarIconItem(
                 systemIcon: "house",
                 label: Strings.home,
+                cycleIndex: sidebarCycleIndex(for: .home),
                 isExpanded: isExpanded,
                 isFocused: focusedItem == .home,
                 action: { routeHomeAndHandoffFocus() }
@@ -217,6 +331,7 @@ struct LeftSidebar: View {
             SidebarIconItem(
                 systemIcon: "magnifyingglass",
                 label: Strings.search,
+                cycleIndex: sidebarCycleIndex(for: .search),
                 isExpanded: isExpanded,
                 isFocused: focusedItem == .search,
                 action: {
@@ -230,6 +345,7 @@ struct LeftSidebar: View {
                 SidebarIconItem(
                     assetIcon: "shuffle",
                     label: viewModel.isShuffling ? "..." : Strings.shuffle,
+                    cycleIndex: sidebarCycleIndex(for: .shuffle),
                     isExpanded: isExpanded,
                     isFocused: focusedItem == .shuffle,
                     action: { showShuffleDialog = true }
@@ -241,6 +357,7 @@ struct LeftSidebar: View {
                 SidebarIconItem(
                     systemIcon: "heart.fill",
                     label: Strings.favorites,
+                    cycleIndex: sidebarCycleIndex(for: .favorites),
                     isExpanded: isExpanded,
                     isFocused: focusedItem == .favorites,
                     action: {
@@ -255,6 +372,7 @@ struct LeftSidebar: View {
                 SidebarIconItem(
                     systemIcon: "theatermasks",
                     label: Strings.genres,
+                    cycleIndex: sidebarCycleIndex(for: .genres),
                     isExpanded: isExpanded,
                     isFocused: focusedItem == .genres,
                     action: {
@@ -269,6 +387,7 @@ struct LeftSidebar: View {
                 SidebarIconItem(
                     systemIcon: "person.3.fill",
                     label: Strings.syncPlay,
+                    cycleIndex: sidebarCycleIndex(for: .syncPlay),
                     isExpanded: isExpanded,
                     isFocused: focusedItem == .syncPlay,
                     action: {
@@ -283,6 +402,7 @@ struct LeftSidebar: View {
                 SidebarIconItem(
                     assetIcon: viewModel.seerrIconName,
                     label: viewModel.seerrDisplayName,
+                    cycleIndex: sidebarCycleIndex(for: .seerr),
                     isExpanded: isExpanded,
                     isFocused: focusedItem == .seerr,
                     action: {
@@ -297,6 +417,7 @@ struct LeftSidebar: View {
                 SidebarIconItem(
                     systemIcon: "movieclapper.fill",
                     label: Strings.libraries,
+                    cycleIndex: sidebarCycleIndex(for: .libraries),
                     isExpanded: isExpanded,
                     isFocused: focusedItem == .libraries,
                     action: { isLibraryExpanded.toggle() }
@@ -324,6 +445,7 @@ struct LeftSidebar: View {
                 SidebarIconItem(
                     systemIcon: "gearshape.fill",
                     label: Strings.settings,
+                    cycleIndex: sidebarCycleIndex(for: .settings),
                     isExpanded: isExpanded,
                     isFocused: focusedItem == .settings,
                     action: { settingsRouter.open() }
@@ -337,6 +459,7 @@ struct LeftSidebar: View {
         SidebarIconItem(
             systemIcon: "gearshape.fill",
             label: Strings.settings,
+            cycleIndex: sidebarCycleIndex(for: .settings),
             isExpanded: isExpanded,
             isFocused: focusedItem == .settings,
             action: { settingsRouter.open() }
@@ -362,25 +485,28 @@ private struct SidebarIconItem: View {
     let assetIcon: String?
     let imageUrl: String?
     let label: String
+    let cycleIndex: Int?
     let isExpanded: Bool
     let isFocused: Bool
     let action: () -> Void
 
-    init(systemIcon: String, imageUrl: String? = nil, label: String, isExpanded: Bool, isFocused: Bool, action: @escaping () -> Void) {
+    init(systemIcon: String, imageUrl: String? = nil, label: String, cycleIndex: Int? = nil, isExpanded: Bool, isFocused: Bool, action: @escaping () -> Void) {
         self.systemIcon = systemIcon
         self.assetIcon = nil
         self.imageUrl = imageUrl
         self.label = label
+        self.cycleIndex = cycleIndex
         self.isExpanded = isExpanded
         self.isFocused = isFocused
         self.action = action
     }
 
-    init(assetIcon: String, label: String, isExpanded: Bool, isFocused: Bool, action: @escaping () -> Void) {
+    init(assetIcon: String, label: String, cycleIndex: Int? = nil, isExpanded: Bool, isFocused: Bool, action: @escaping () -> Void) {
         self.systemIcon = nil
         self.assetIcon = assetIcon
         self.imageUrl = nil
         self.label = label
+        self.cycleIndex = cycleIndex
         self.isExpanded = isExpanded
         self.isFocused = isFocused
         self.action = action
@@ -388,17 +514,24 @@ private struct SidebarIconItem: View {
 
     @EnvironmentObject var theme: MoonfinTheme
 
+    private var tintColor: Color {
+        if let index = cycleIndex, theme.isNeonPulseTheme {
+            return theme.navCycleColor(for: index)
+        }
+        return theme.colorScheme.onBackground
+    }
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 0) {
                 HStack(spacing: 12) {
                     iconContent
-                        .frame(width: 32, height: 32)
+                        .frame(width: 36, height: 36)
 
                     if isExpanded {
                         Text(label)
                             .font(.bodyMd)
-                            .foregroundColor(.white)
+                            .foregroundColor(tintColor)
                             .lineLimit(1)
                     }
                 }
@@ -406,7 +539,7 @@ private struct SidebarIconItem: View {
                 .padding(.horizontal, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 24)
-                        .stroke(isFocused ? theme.focusBorder.color : .clear, lineWidth: 2)
+                        .stroke(isFocused ? theme.effectiveFocusColor : .clear, lineWidth: 2)
                 )
 
                 Spacer(minLength: 0)
@@ -433,7 +566,8 @@ private struct SidebarIconItem: View {
                 .renderingMode(.template)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 28, height: 28)
+                .frame(width: 32, height: 32)
+                .foregroundColor(tintColor)
         } else {
             defaultPersonIconOrSystemIcon
         }
@@ -443,12 +577,12 @@ private struct SidebarIconItem: View {
     private var defaultPersonIconOrSystemIcon: some View {
         if systemIcon == "person.fill" {
             PersonAvatarShape()
-                .fill(.white)
-                .frame(width: 18, height: 18)
+                .fill(tintColor)
+                .frame(width: 22, height: 22)
         } else {
             Image(systemName: systemIcon ?? "questionmark")
-                .font(.system(size: 24))
-                .foregroundColor(.white)
+                .font(.system(size: 28))
+                .foregroundColor(tintColor)
         }
     }
 }
@@ -467,13 +601,13 @@ private struct SidebarTextItem: View {
 
                 Text(label)
                     .font(.bodyMd)
-                    .foregroundColor(.white)
+                    .foregroundColor(theme.colorScheme.onBackground)
                     .lineLimit(1)
                     .padding(.vertical, 6)
                     .padding(.horizontal, 8)
                     .background(
                         RoundedRectangle(cornerRadius: 24)
-                            .stroke(isFocused ? theme.focusBorder.color : .clear, lineWidth: 2)
+                                .stroke(isFocused ? theme.effectiveFocusColor : .clear, lineWidth: 2)
                     )
 
                 Spacer(minLength: 0)

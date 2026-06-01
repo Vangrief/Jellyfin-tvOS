@@ -6,6 +6,12 @@ struct SeerrMediaDetailsView: View {
     @EnvironmentObject var theme: MoonfinTheme
     @EnvironmentObject var router: NavigationRouter
     @EnvironmentObject var container: AppContainer
+    @Namespace private var contentNamespace
+    @Environment(\.resetFocus) private var resetFocus
+    @State private var actionButtonsFocusTrigger = 0
+
+    let sidebarEntryToken: Int
+    let sidebarHandoffToken: Int
 
     private var navbarIsLeft: Bool {
         container.userPreferences[UserPreferences.navbarPosition] == .left
@@ -15,7 +21,12 @@ struct SeerrMediaDetailsView: View {
         navbarIsLeft ? LeftSidebar.sidebarInset : 50
     }
 
-    init(itemJson: String, seerrRepository: SeerrRepositoryProtocol) {
+    private var isStateLoaded: Bool {
+        if case .loaded = viewModel.state { return true }
+        return false
+    }
+
+    init(itemJson: String, seerrRepository: SeerrRepositoryProtocol, sidebarEntryToken: Int = 0, sidebarHandoffToken: Int = 0) {
         let item: SeerrDiscoverItemDto
         if let data = itemJson.data(using: .utf8),
            let decoded = try? JSONDecoder().decode(SeerrDiscoverItemDto.self, from: data) {
@@ -26,6 +37,8 @@ struct SeerrMediaDetailsView: View {
                                         releaseDate: nil, firstAirDate: nil)
         }
         _viewModel = StateObject(wrappedValue: SeerrMediaDetailsViewModel(item: item, seerrRepository: seerrRepository))
+        self.sidebarEntryToken = sidebarEntryToken
+        self.sidebarHandoffToken = sidebarHandoffToken
     }
 
     var body: some View {
@@ -50,6 +63,14 @@ struct SeerrMediaDetailsView: View {
                 let client = container.serverClientFactory.client(for: server)
                 viewModel.setServerClient(client)
             }
+        }
+        .onChange(of: isStateLoaded) { loaded in
+            guard loaded else { return }
+            DispatchQueue.main.async { actionButtonsFocusTrigger += 1 }
+        }
+        .onChange(of: sidebarHandoffToken) { _ in
+            guard navbarIsLeft else { return }
+            actionButtonsFocusTrigger += 1
         }
         .onExitCommand {
             handleExitCommand()
@@ -79,7 +100,11 @@ struct SeerrMediaDetailsView: View {
         ZStack {
             theme.colorScheme.background.ignoresSafeArea()
             ProgressView().tint(theme.colorScheme.onBackground)
+            Button("") {}
+                .opacity(0.001)
+                .prefersDefaultFocus(true, in: contentNamespace)
         }
+        .focusScope(contentNamespace)
     }
 
     private func errorView(_ message: String) -> some View {
@@ -149,6 +174,8 @@ struct SeerrMediaDetailsView: View {
                     .padding(.top, SpaceTokens.spaceLg)
             }
         }
+        .focusScope(contentNamespace)
+        .prefersDefaultFocus(true, in: contentNamespace)
     }
 
     private var headerSection: some View {
@@ -251,7 +278,7 @@ struct SeerrMediaDetailsView: View {
     }
 
     private var actionButtons: some View {
-        FocusFirstRow(firstItemId: "request") { focusBinding in
+        FocusFirstRow(firstItemId: "request", focusTrigger: actionButtonsFocusTrigger) { focusBinding in
             HStack(alignment: .top, spacing: 12) {
                 let canRequest = viewModel.canRequestHd || viewModel.canRequest4k
                 SeerrActionButton(
@@ -633,11 +660,12 @@ struct SeerrMediaDetailsView: View {
                 ProgressView().tint(theme.colorScheme.onBackground)
             }
 
-            HStack {
-                Spacer()
+            HStack(spacing: SpaceTokens.spaceSm) {
                 FocusableDialogButton(title: Strings.seerrSkip) { viewModel.confirmAdvancedOptions() }
                 FocusableDialogButton(title: Strings.seerrConfirm) { viewModel.confirmAdvancedOptions() }
             }
+            .focusSection()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(40)
         .background(theme.colorScheme.background)

@@ -12,10 +12,13 @@ struct ItemDetailsView: View {
     @EnvironmentObject var container: AppContainer
     @EnvironmentObject var theme: MoonfinTheme
     @EnvironmentObject var router: NavigationRouter
+    @Namespace private var detailsNamespace
+    @Environment(\.resetFocus) private var resetFocus
     @FocusState private var focusedButton: ActionButtonID?
     @FocusState private var focusedTrackId: String?
     @FocusState private var focusedEpisodeId: String?
     @State private var showFullBio = false
+    @State private var showFullOverview = false
     @State private var showTrackSelector: TrackSelectorMode?
     @State private var showAddToPlaylist = false
     @State private var showDeleteConfirmation = false
@@ -26,6 +29,7 @@ struct ItemDetailsView: View {
     @State private var selectedMediaSourceIndex: Int = 0
     let sidebarEntryToken: Int
     let sidebarHandoffToken: Int
+    let onMoveToSidebar: (() -> Void)?
     @State private var currentFocusTarget: DetailsRestoreTarget?
     @State private var sidebarEntryFocusTarget: DetailsRestoreTarget?
     @State private var restoredContentId: String?
@@ -37,7 +41,11 @@ struct ItemDetailsView: View {
     @State private var didAutoPlay = false
 
     private func focusTrace(_ message: String) {
-        _ = message
+#if DEBUG
+        guard ProcessInfo.processInfo.environment["MOONFIN_HOME_FOCUS_DEBUG"] == "1" else { return }
+        let timestamp = Date().timeIntervalSinceReferenceDate
+        print("[DetailsNav] [\(timestamp)] \(message)")
+#endif
     }
 
     private func describe(_ target: DetailsRestoreTarget?) -> String {
@@ -56,12 +64,10 @@ struct ItemDetailsView: View {
         focusTrace("restoring target=\(describe(target))")
         switch target {
         case .button(let button):
-            focusedButton = nil
             DispatchQueue.main.async {
                 focusedButton = button
             }
         case .track(let id):
-            focusedTrackId = nil
             DispatchQueue.main.async {
                 focusedTrackId = id
             }
@@ -87,7 +93,8 @@ struct ItemDetailsView: View {
         serverId: String? = nil,
         autoPlay: Bool = false,
         sidebarEntryToken: Int = 0,
-        sidebarHandoffToken: Int = 0
+        sidebarHandoffToken: Int = 0,
+        onMoveToSidebar: (() -> Void)? = nil
     ) {
         _viewModel = StateObject(wrappedValue: ItemDetailViewModel(
             container: container,
@@ -98,6 +105,7 @@ struct ItemDetailsView: View {
         self.autoPlay = autoPlay
         self.sidebarEntryToken = sidebarEntryToken
         self.sidebarHandoffToken = sidebarHandoffToken
+        self.onMoveToSidebar = onMoveToSidebar
     }
 
     var body: some View {
@@ -107,7 +115,7 @@ struct ItemDetailsView: View {
             subtitleDownloadOverlay
         }
         .confirmationDialog(
-            "Delete Item?",
+            Strings.itemDetailsViewDeleteItemTitle,
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
@@ -137,8 +145,8 @@ struct ItemDetailsView: View {
         .onChange(of: viewModel.isLoading) { isLoading in
             if !isLoading, viewModel.item != nil {
                 DispatchQueue.main.async {
-                    focusedButton = viewModel.canResume ? .resume : .play
-                    focusTrace("initial focusedButton=\(String(describing: focusedButton))")
+                    resetFocus(in: detailsNamespace)
+                    focusTrace("reset focus to detailsNamespace on load")
                 }
                 initializeTrackIndices()
 
@@ -148,6 +156,9 @@ struct ItemDetailsView: View {
                     playVideo(item: item, positionTicks: ticks)
                 }
             }
+        }
+        .onChange(of: viewModel.item?.id) { _ in
+            showFullOverview = false
         }
         .onChange(of: focusedButton) { newValue in
             focusTrace("focusedButton changed to \(String(describing: newValue))")
@@ -174,10 +185,22 @@ struct ItemDetailsView: View {
         }
         .onChange(of: sidebarHandoffToken) { _ in
             guard navbarIsLeft else { return }
-            let restoreTarget = sidebarEntryFocusTarget ?? currentFocusTarget
-            focusTrace("sidebar handoff target=\(describe(restoreTarget))")
-            guard let restoreTarget else { return }
-            restoreDetailsFocus(restoreTarget)
+            let target = sidebarEntryFocusTarget
+                ?? currentFocusTarget
+                ?? (viewModel.item != nil ? .button(viewModel.canResume ? .resume : .play) : nil)
+            sidebarEntryFocusTarget = nil
+            focusTrace("sidebar handoff target=\(describe(target))")
+            resetFocus(in: detailsNamespace)
+            if let target {
+                restoreDetailsFocus(target)
+            }
+        }
+        .task(id: viewModel.item?.id) {
+            guard viewModel.item != nil, focusedButton == nil else { return }
+            await MainActor.run {
+                resetFocus(in: detailsNamespace)
+                focusTrace("task reset focus to detailsNamespace")
+            }
         }
         .sheet(item: $showTrackSelector) { mode in
             if let item = viewModel.item {
@@ -229,18 +252,20 @@ struct ItemDetailsView: View {
                     loadingView
                 } else if let item = viewModel.item {
                     detailContent(item: item, screenHeight: geo.size.height)
+                        .focusSection()
                 } else {
                     errorView
                 }
             }
         }
+        .focusScope(detailsNamespace)
     }
 
     @ViewBuilder
     private var addToPlaylistOverlay: some View {
         if showAddToPlaylist {
             ZStack {
-                Color.black.opacity(0.8)
+                theme.colorScheme.scrim.opacity(0.8)
                     .ignoresSafeArea()
 
                 AddToPlaylistDialog(
@@ -312,10 +337,12 @@ struct ItemDetailsView: View {
         guard let sources = viewModel.item?.mediaSources,
               selectedMediaSourceIndex < sources.count else { return }
         let source = sources[selectedMediaSourceIndex]
+        let defaultSubtitlesOff = container.userPreferences[UserPreferences.subtitlesDefaultToNone]
+        let isAudioItem = viewModel.item?.mediaType == .audio
         if selectedAudioIndex == nil {
             selectedAudioIndex = source.defaultAudioStreamIndex
         }
-        if selectedSubtitleIndex == nil {
+        if selectedSubtitleIndex == nil && !(defaultSubtitlesOff && !isAudioItem) {
             selectedSubtitleIndex = source.defaultSubtitleStreamIndex
         }
     }
@@ -410,8 +437,6 @@ struct ItemDetailsView: View {
 
                 actionButtonsSection(item: item)
                     .padding(.top, SpaceTokens.spaceXl)
-                    .padding(.leading, -contentLeading)
-                    .padding(.trailing, -50)
 
                 metadataSection(item: item)
                     .padding(.top, SpaceTokens.spaceMd)
@@ -441,7 +466,7 @@ struct ItemDetailsView: View {
                 if item.type == .person, let posterUrl = viewModel.posterUrl(for: item),
                    let url = URL(string: posterUrl) {
                     CachedImage(url: url, contentMode: .fit)
-                        .frame(maxWidth: 280, maxHeight: 420)
+                    .frame(maxWidth: 280, maxHeight: 420)
                         .cornerRadius(RadiusTokens.medium)
                         .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
                 }
@@ -460,7 +485,7 @@ struct ItemDetailsView: View {
                             .frame(maxHeight: 100)
                     } else {
                         Text(item.name)
-                            .font(.system(size: 44, weight: .bold))
+                            .font(.title2xl)
                             .foregroundColor(theme.colorScheme.onBackground)
                             .lineLimit(2)
                     }
@@ -474,16 +499,17 @@ struct ItemDetailsView: View {
 
                         if let tagline = item.taglines?.first, !tagline.isEmpty {
                             Text("\"\(tagline)\"")
-                                .font(.bodyMd)
+                                .font(.bodySm)
                                 .italic()
-                                .foregroundColor(theme.colorScheme.onBackground.opacity(0.6))
+                                .foregroundColor(theme.isNeonPulseTheme ? theme.neonPrimaryColor : theme.colorScheme.onBackground.opacity(0.6))
                         }
 
                         if let overview = item.overview, !overview.isEmpty {
-                            Text(overview)
-                                .font(.bodyMd)
-                                .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
-                                .fixedSize(horizontal: false, vertical: true)
+                            ExpandableBioText(
+                                text: overview,
+                                isExpanded: $showFullOverview,
+                                lineLimit: 4
+                            )
                                 .padding(.top, SpaceTokens.spaceXs)
                         }
                     }
@@ -500,14 +526,14 @@ struct ItemDetailsView: View {
                     if let imageUrlString, let url = URL(string: imageUrlString) {
                         if isEpisode {
                             CachedImage(url: url, contentMode: .fill)
-                                .frame(maxWidth: 380, maxHeight: 214)
+                                .frame(maxWidth: 500, maxHeight: 281)
                                 .aspectRatio(16.0 / 9.0, contentMode: .fit)
                                 .clipped()
                                 .cornerRadius(RadiusTokens.medium)
                                 .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
                         } else {
                             CachedImage(url: url, contentMode: .fit)
-                                .frame(maxWidth: 340, maxHeight: isMusic ? 340 : 510)
+                                .frame(maxWidth: 320, maxHeight: isMusic ? 320 : 480)
                                 .cornerRadius(RadiusTokens.medium)
                                 .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
                         }
@@ -527,7 +553,7 @@ struct ItemDetailsView: View {
             if let imageUrlString = viewModel.posterUrl(for: item),
                let url = URL(string: imageUrlString) {
                 CachedImage(url: url, contentMode: .fit)
-                    .frame(width: 360, height: 360)
+                    .frame(width: 340, height: 340)
                     .cornerRadius(RadiusTokens.medium)
                     .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
             }
@@ -539,7 +565,7 @@ struct ItemDetailsView: View {
                         .frame(maxHeight: 90)
                 } else {
                     Text(item.name)
-                        .font(.system(size: 44, weight: .bold))
+                        .font(.title2xl)
                         .foregroundColor(theme.colorScheme.onBackground)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
@@ -560,10 +586,11 @@ struct ItemDetailsView: View {
                 }
 
                 if let overview = item.overview, !overview.isEmpty {
-                    Text(overview)
-                        .font(.bodyMd)
-                        .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
-                        .fixedSize(horizontal: false, vertical: true)
+                    ExpandableBioText(
+                        text: overview,
+                        isExpanded: $showFullOverview,
+                        lineLimit: 4
+                    )
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 900)
                         .padding(.top, SpaceTokens.spaceXs)
@@ -585,7 +612,7 @@ struct ItemDetailsView: View {
             if let imageUrlString = viewModel.posterUrl(for: item),
                let url = URL(string: imageUrlString) {
                 CachedImage(url: url, contentMode: .fit)
-                    .frame(width: 340, height: 340)
+                    .frame(width: 320, height: 320)
                     .cornerRadius(RadiusTokens.medium)
                     .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 6)
             }
@@ -597,7 +624,7 @@ struct ItemDetailsView: View {
                         .frame(maxHeight: 90)
                 } else {
                     Text(item.name)
-                        .font(.system(size: 44, weight: .bold))
+                        .font(.title2xl)
                         .foregroundColor(theme.colorScheme.onBackground)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
@@ -618,11 +645,12 @@ struct ItemDetailsView: View {
     }
 
     private func detailInfoRow(item: ServerItem) -> some View {
-        HStack(spacing: SpaceTokens.spaceSm) {
+        let badges = viewModel.mediaBadges(for: item, mediaSourceIndex: selectedMediaSourceIndex)
+        return HStack(spacing: SpaceTokens.spaceSm) {
             if item.type == .episode,
                let season = item.parentIndexNumber,
                let episode = item.indexNumber {
-                infoText("S\(season):E\(episode)")
+                infoText(Strings.itemDetailsViewSeasonEpisode(season, episode))
                 infoSeparator
             }
 
@@ -647,26 +675,26 @@ struct ItemDetailsView: View {
             }
 
             if item.type == .series, let seasonCount = item.childCount, seasonCount > 0 {
-                infoText(seasonCount == 1 ? "1 Season" : "\(seasonCount) Seasons")
+                infoText(seasonCount == 1 ? Strings.itemDetailsViewOneSeason : Strings.itemDetailsViewSeasonsCount(seasonCount))
                 infoSeparator
             }
 
             if item.type == .series, let status = item.status?.lowercased(),
                status == "continuing" || status == "ended" {
                 seriesStatusBadge(status)
-                if item.officialRating != nil || !viewModel.badges.isEmpty {
+                if item.officialRating != nil || !badges.isEmpty {
                     infoSeparator
                 }
             }
 
             if let rating = item.officialRating, !rating.isEmpty {
                 infoBadge(rating)
-                if !viewModel.badges.isEmpty {
+                if !badges.isEmpty {
                     infoSeparator
                 }
             }
 
-            ForEach(viewModel.badges) { badge in
+            ForEach(badges) { badge in
                 infoBadge(badge.label)
             }
         }
@@ -674,13 +702,13 @@ struct ItemDetailsView: View {
 
     private func infoText(_ text: String) -> some View {
         Text(text)
-            .font(.bodyMd)
+            .font(.bodySm)
             .foregroundColor(theme.colorScheme.onBackground.opacity(0.7))
     }
 
     private var infoSeparator: some View {
         Text("·")
-            .font(.bodyMd)
+            .font(.bodySm)
             .foregroundColor(theme.colorScheme.onBackground.opacity(0.4))
     }
 
@@ -692,13 +720,13 @@ struct ItemDetailsView: View {
             .padding(.vertical, 2)
             .overlay(
                 RoundedRectangle(cornerRadius: RadiusTokens.extraSmall)
-                    .stroke(theme.colorScheme.onBackground.opacity(0.3), lineWidth: 1)
+                    .stroke(theme.isNeonPulseTheme ? theme.neonPrimaryColor.opacity(0.85) : theme.colorScheme.onBackground.opacity(0.3), lineWidth: 1)
             )
     }
 
     private func seriesStatusBadge(_ status: String) -> some View {
         let isContinuing = status == "continuing"
-        let label = isContinuing ? "Continuing" : "Ended"
+        let label = isContinuing ? Strings.itemDetailsViewContinuing : Strings.itemDetailsViewEnded
         let badgeColor = isContinuing ? Color.green : Color.red
         return Text(label)
             .font(.bodySm)
@@ -708,14 +736,18 @@ struct ItemDetailsView: View {
             .background(badgeColor.opacity(0.8), in: RoundedRectangle(cornerRadius: RadiusTokens.extraSmall))
     }
 
+    @ViewBuilder
     private var ratingsRow: some View {
         let showLabels = viewModel.showRatingLabels
-        return EqualHeightRatingRow(spacing: SpaceTokens.spaceSm) { sharedHeight in
-            ForEach(viewModel.ratings, id: \.0) { source, value in
-                if source == "stars" {
-                    StarRatingChipView(value: value, showLabel: showLabels, sharedHeight: sharedHeight)
-                } else {
-                    RatingChipView(source: source, normalizedValue: value, showLabel: showLabels, sharedHeight: sharedHeight)
+        if viewModel.showRatingBadges {
+            EqualHeightRatingRow(spacing: 8) { sharedHeight in
+                ForEach(viewModel.ratings, id: \.0) { source, value in
+                    let canonicalSource = RatingSource.canonicalSourceRawValue(source)
+                    if canonicalSource == RatingSource.communityRawValue {
+                        StarRatingChipView(value: value, showLabel: showLabels, sharedHeight: sharedHeight)
+                    } else {
+                        RatingChipView(source: canonicalSource, normalizedValue: value, showLabel: showLabels, sharedHeight: sharedHeight)
+                    }
                 }
             }
         }
@@ -835,8 +867,11 @@ struct ItemDetailsView: View {
                 } : nil,
                 onDelete: canDelete ? {
                     showDeleteConfirmation = true
-                } : nil
+                } : nil,
+                onMoveLeft: onMoveToSidebar
             )
+            .defaultFocus($focusedButton, viewModel.canResume ? .resume : .play)
+            .prefersDefaultFocus(true, in: detailsNamespace)
         }
     }
 
@@ -905,23 +940,46 @@ struct ItemDetailsView: View {
         }
     }
 
+    @MainActor
     private func playTrailer(item: ServerItem) async {
+        let initialRemoteTarget = TrailerPlaybackHelper.firstRemoteTrailerPlaybackTarget(from: item.remoteTrailers)
+        if let target = initialRemoteTarget {
+            router.navigate(to: .trailerPlayer(videoId: target.videoId, trailerUrl: target.trailerUrl))
+            return
+        }
+
+        let resolvedServerId = routeServerId ?? item.effectiveServerId
         let server: Server?
-        if let routeServerId,
-           let parsedId = UUID.from(rawId: routeServerId) {
+        if let resolvedServerId,
+           let parsedId = UUID.from(rawId: resolvedServerId) {
             server = container.serverRepository.storedServers.value.first(where: { $0.id == parsedId })
         } else {
             server = container.serverRepository.currentServer.value
         }
 
-        guard let server else { return }
+        guard let server else {
+            if let target = initialRemoteTarget {
+                router.navigate(to: .trailerPlayer(videoId: target.videoId, trailerUrl: target.trailerUrl))
+            }
+            return
+        }
+
         let client = container.serverClientFactory.client(for: server)
-        _ = await TrailerPlaybackHelper.playTrailer(
-            for: item,
+        let trailerItem = (try? await client.userLibraryApi.getItem(itemId: item.id)) ?? item
+
+        let played = await TrailerPlaybackHelper.playTrailer(
+            for: trailerItem,
             client: client,
             playbackCoordinator: container.playbackCoordinator,
-            router: router
+            router: router,
+            serverId: resolvedServerId
         )
+
+        if !played,
+           let target = TrailerPlaybackHelper.firstRemoteTrailerPlaybackTarget(from: trailerItem.remoteTrailers)
+                ?? initialRemoteTarget {
+            router.navigate(to: .trailerPlayer(videoId: target.videoId, trailerUrl: target.trailerUrl))
+        }
     }
 
     private func playTrackNext(_ track: ServerItem) {
@@ -967,18 +1025,18 @@ struct ItemDetailsView: View {
         let studios = item.studios ?? []
 
         if item.type != .playlist, !genres.isEmpty {
-            columns.append(("Genres", genres.joined(separator: ", ")))
+            columns.append((Strings.genres, genres.joined(separator: ", ")))
         }
         if !directors.isEmpty {
-            columns.append((directors.count > 1 ? "Directors" : "Director",
+            columns.append((directors.count > 1 ? Strings.itemDetailsViewDirectors : Strings.itemDetailsViewDirector,
                             directors.map(\.name).joined(separator: ", ")))
         }
         if !writers.isEmpty {
-            columns.append((writers.count > 1 ? "Writers" : "Writer",
+            columns.append((writers.count > 1 ? Strings.itemDetailsViewWriters : Strings.itemDetailsViewWriter,
                             writers.map(\.name).joined(separator: ", ")))
         }
         if !studios.isEmpty {
-            columns.append((studios.count > 1 ? "Studios" : "Studio",
+            columns.append((studios.count > 1 ? Strings.seerrStudios : Strings.itemDetailsViewStudio,
                             studios.compactMap(\.name).joined(separator: ", ")))
         }
         return columns
@@ -987,24 +1045,27 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private func metadataSection(item: ServerItem) -> some View {
         let columns = metadataColumns(for: item)
+        let isNeonPulse = theme.isNeonPulseTheme
+        let neonPrimary = theme.neonPrimaryColor
+        let neonSecondary = theme.neonSecondaryColor
 
         if !columns.isEmpty {
             HStack(spacing: 0) {
                 ForEach(Array(columns.enumerated()), id: \.offset) { index, column in
                     if index > 0 {
                         Rectangle()
-                            .fill(Color.white.opacity(0.08))
+                            .fill(isNeonPulse ? neonPrimary.opacity(0.45) : theme.colorScheme.onBackground.opacity(0.08))
                             .frame(width: 1, height: 36)
                     }
 
                     VStack(alignment: .leading, spacing: SpaceTokens.spaceXs) {
                         Text(column.label.uppercased())
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(theme.colorScheme.onBackground.opacity(0.4))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(isNeonPulse ? neonPrimary : theme.colorScheme.onBackground.opacity(0.4))
                             .tracking(0.5)
                         Text(column.value)
                             .font(.bodySm)
-                            .foregroundColor(theme.colorScheme.onBackground.opacity(0.85))
+                            .foregroundColor(isNeonPulse ? neonSecondary : theme.colorScheme.onBackground.opacity(0.85))
                             .lineLimit(2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1014,10 +1075,10 @@ struct ItemDetailsView: View {
             .padding(.vertical, SpaceTokens.spaceMd)
             .background(
                 RoundedRectangle(cornerRadius: RadiusTokens.small)
-                    .fill(Color.white.opacity(0.03))
+                    .fill(theme.colorScheme.surface.opacity(0.28))
                     .overlay(
                         RoundedRectangle(cornerRadius: RadiusTokens.small)
-                            .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                            .stroke(isNeonPulse ? neonPrimary.opacity(0.75) : theme.colorScheme.onBackground.opacity(0.06), lineWidth: 1)
                     )
             )
         }
@@ -1026,12 +1087,12 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private func seriesSections() -> some View {
         if !viewModel.nextUp.isEmpty {
-            detailSection(title: "Next Up", id: "nextUp") {
+            detailSection(title: Strings.nextUp, id: "nextUp") {
                 episodeList(items: viewModel.nextUp)
             }
         }
         if !viewModel.seasons.isEmpty {
-            detailSection(title: "Seasons", id: "seasons") {
+            detailSection(title: Strings.seasons, id: "seasons") {
                 seasonRow
             }
         }
@@ -1042,7 +1103,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private func seasonSections() -> some View {
         if !viewModel.episodes.isEmpty {
-            detailSection(title: "Episodes", id: "episodes") {
+            detailSection(title: Strings.episodes, id: "episodes") {
                 episodeList(items: viewModel.episodes)
             }
         }
@@ -1054,15 +1115,15 @@ struct ItemDetailsView: View {
     private func episodeSections() -> some View {
         chaptersSection
         if let nextEp = viewModel.nextEpisode {
-            detailSection(title: "Next Episode", id: "nextEp") {
+            detailSection(title: Strings.nextEpisode, id: "nextEp") {
                 episodeList(items: [nextEp])
             }
         }
         if viewModel.episodes.count > 1 {
             let others = viewModel.episodes.filter { $0.id != viewModel.item?.id }
             if !others.isEmpty {
-                detailSection(title: "More from This Season", id: "moreEpisodes") {
-                    itemRow(items: others, imageType: .thumb, aspectRatio: 16.0/9.0, cardWidth: 280)
+                detailSection(title: Strings.itemDetailsViewMoreFromThisSeason, id: "moreEpisodes") {
+                    itemRow(items: others, imageType: .thumb, aspectRatio: 16.0/9.0, cardWidth: 400)
                 }
             }
         }
@@ -1079,12 +1140,12 @@ struct ItemDetailsView: View {
         let movies = viewModel.filmography.filter { $0.type == .movie }
         let series = viewModel.filmography.filter { $0.type == .series }
         if !movies.isEmpty {
-            detailSection(title: "Movies", id: "movies") {
+            detailSection(title: Strings.movies, id: "movies") {
                 itemRow(items: movies)
             }
         }
         if !series.isEmpty {
-            detailSection(title: "Series", id: "series") {
+            detailSection(title: Strings.series, id: "series") {
                 itemRow(items: series)
             }
         }
@@ -1096,7 +1157,7 @@ struct ItemDetailsView: View {
             personDateRow(item: item)
 
             if let overview = item.overview, !overview.isEmpty {
-                detailSection(title: "Biography", id: "biography") {
+                detailSection(title: Strings.seerrBiography, id: "biography") {
                     ExpandableBioText(
                         text: overview,
                         isExpanded: $showFullBio
@@ -1131,12 +1192,12 @@ struct ItemDetailsView: View {
         let formatter = Self.dateDisplayFormatter
 
         if let birthDate = item.premiereDate {
-            parts.append("Born \(formatter.string(from: birthDate))")
+            parts.append(Strings.seerrBornDate(formatter.string(from: birthDate)))
             if let deathDate = item.endDate {
-                parts.append("Died \(formatter.string(from: deathDate))")
+                parts.append(Strings.seerrDiedDate(formatter.string(from: deathDate)))
             }
             if let age = Self.calculateAge(from: birthDate, to: item.endDate) {
-                parts.append("Age \(age)")
+                parts.append(Strings.itemDetailsViewAge(age))
             }
         }
 
@@ -1154,7 +1215,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private func musicSections() -> some View {
         if !viewModel.tracks.isEmpty {
-            detailSection(title: "Tracks", id: "tracks") {
+            detailSection(title: Strings.itemDetailsViewTracks, id: "tracks") {
                 interactiveTrackList(items: viewModel.tracks)
             }
         }
@@ -1164,7 +1225,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private func artistSections() -> some View {
         if let item = viewModel.item, let bio = item.overview, !bio.isEmpty {
-            detailSection(title: "Biography", id: "artistBio") {
+            detailSection(title: Strings.seerrBiography, id: "artistBio") {
                 ExpandableBioText(
                     text: bio,
                     isExpanded: $showFullBio
@@ -1172,7 +1233,7 @@ struct ItemDetailsView: View {
             }
         }
         if !viewModel.albums.isEmpty {
-            detailSection(title: "Discography", id: "albums") {
+            detailSection(title: Strings.itemDetailsViewDiscography, id: "albums") {
                 itemRow(items: viewModel.albums, aspectRatio: 1.0)
             }
         }
@@ -1186,17 +1247,17 @@ struct ItemDetailsView: View {
         let other = viewModel.collectionItems.filter { $0.type != .movie && $0.type != .series }
 
         if !movies.isEmpty {
-            detailSection(title: "Movies", id: "collectionMovies") {
+            detailSection(title: Strings.movies, id: "collectionMovies") {
                 itemRow(items: movies, cardWidth: 190)
             }
         }
         if !series.isEmpty {
-            detailSection(title: "Series", id: "collectionSeries") {
+            detailSection(title: Strings.series, id: "collectionSeries") {
                 itemRow(items: series, cardWidth: 190)
             }
         }
         if !other.isEmpty {
-            detailSection(title: "Other", id: "collectionOther") {
+            detailSection(title: Strings.other, id: "collectionOther") {
                 itemRow(items: other, cardWidth: 190)
             }
         }
@@ -1220,7 +1281,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private var castSection: some View {
         if !viewModel.cast.isEmpty {
-            detailSection(title: "Cast & Crew", id: "cast") {
+            detailSection(title: Strings.castAndCrew, id: "cast") {
                 castRow
             }
         }
@@ -1229,7 +1290,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private var similarSection: some View {
         if !viewModel.similar.isEmpty {
-            detailSection(title: "More Like This", id: "similar") {
+            detailSection(title: Strings.moreLikeThis, id: "similar") {
                 itemRow(items: viewModel.similar, cardWidth: 190)
             }
         }
@@ -1238,7 +1299,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private var specialFeaturesSection: some View {
         if !viewModel.specialFeatures.isEmpty {
-            detailSection(title: "Special Features", id: "specials") {
+            detailSection(title: Strings.itemDetailsViewSpecialFeatures, id: "specials") {
                 itemRow(items: viewModel.specialFeatures, imageType: .primary, aspectRatio: 16.0/9.0, cardWidth: 240)
             }
         }
@@ -1247,7 +1308,7 @@ struct ItemDetailsView: View {
     @ViewBuilder
     private var parentCollectionSection: some View {
         if !viewModel.parentCollectionItems.isEmpty {
-            detailSection(title: viewModel.parentCollectionName ?? "Collection", id: "parentCollection") {
+            detailSection(title: viewModel.parentCollectionName ?? Strings.collectionSingular, id: "parentCollection") {
                 itemRow(items: viewModel.parentCollectionItems, cardWidth: 190)
             }
         }
@@ -1258,7 +1319,7 @@ struct ItemDetailsView: View {
         if let item = viewModel.item,
            let chapters = item.chapters,
            !chapters.isEmpty {
-            detailSection(title: "Chapters", id: "chapters") {
+            detailSection(title: Strings.chapters, id: "chapters") {
                 chapterRow(item: item, chapters: chapters)
             }
         }
@@ -1320,8 +1381,8 @@ struct ItemDetailsView: View {
     }
 
     private func chapterRow(item: ServerItem, chapters: [ServerChapter]) -> some View {
-        let cardWidth: CGFloat = 320
-        let cardHeight: CGFloat = 180
+        let cardWidth: CGFloat = 400
+        let cardHeight: CGFloat = 225
 
         return FocusFirstRow(
             firstItemId: chapters.first.map(chapterFocusId),
@@ -1357,7 +1418,7 @@ struct ItemDetailsView: View {
                                     .stroke(isFocused ? theme.focusBorder.color : .clear, lineWidth: isFocused ? 3 : 0)
                             )
 
-                            Text(chapter.name ?? "Chapter")
+                            Text(chapter.name ?? Strings.itemDetailsViewChapter)
                                 .font(.bodySm)
                                 .foregroundColor(theme.colorScheme.onBackground)
                                 .lineLimit(1)

@@ -9,10 +9,11 @@ struct ItemCard: View {
     let item: ServerItem
     let imageUrl: String?
     var aspectRatio: CGFloat = 2.0 / 3.0
-    var cardWidth: CGFloat = 150
+    var cardWidth: CGFloat = 180
     var shape: CardShape = .rounded
     var watchedIndicator: WatchedIndicatorBehavior = .always
     var serverName: String?
+    var focusScale: CGFloat = 1.05
     var onFocused: ((ServerItem) -> Void)?
     var onSelect: (() -> Void)?
     var onFocusChange: ((Bool) -> Void)? = nil
@@ -24,10 +25,28 @@ struct ItemCard: View {
     @EnvironmentObject var previewManager: PreviewPlayerManager
     @FocusState private var isFocused: Bool
 
-    private var cardHeight: CGFloat { cardWidth / aspectRatio }
+    private var safeCardWidth: CGFloat {
+        if cardWidth.isFinite, cardWidth > 1 {
+            return cardWidth
+        }
+        return 1
+    }
+
+    private var safeAspectRatio: CGFloat {
+        if aspectRatio.isFinite, aspectRatio > 0.01 {
+            return aspectRatio
+        }
+        return 2.0 / 3.0
+    }
+
+    private var cardHeight: CGFloat { safeCardWidth / safeAspectRatio }
 
     private var cornerRadius: CGFloat {
-        shape == .circle ? cardWidth / 2 : RadiusTokens.small
+        shape == .circle ? safeCardWidth / 2 : RadiusTokens.small
+    }
+
+    private var isFocusExpansionEnabled: Bool {
+        container.userPreferences[UserPreferences.cardFocusExpansion]
     }
 
     var body: some View {
@@ -45,13 +64,16 @@ struct ItemCard: View {
                 
                 cardOverlays
             }
-            .frame(width: cardWidth, height: cardHeight)
+            .frame(width: safeCardWidth, height: cardHeight)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         }
         .buttonStyle(ItemCardButtonStyle(
             isFocused: isFocused,
             cornerRadius: cornerRadius,
-            focusBorderColor: theme.focusBorder.color
+            focusScale: isFocusExpansionEnabled ? focusScale : 1.0,
+            focusBorderColor: theme.effectiveFocusColor,
+            focusGlow: theme.activeSpec.borders.focusGlow,
+            animateFocusChange: isFocusExpansionEnabled
         ))
         .focused($isFocused)
         .onChange(of: isFocused) { focused in
@@ -111,9 +133,9 @@ struct ItemCard: View {
         if imageUrl != nil {
             CachedImage(
                 urlString: imageUrl,
-                thumbnailSize: CGSize(width: cardWidth, height: cardHeight)
+                thumbnailSize: CGSize(width: safeCardWidth, height: cardHeight)
             )
-            .frame(width: cardWidth, height: cardHeight)
+            .frame(width: safeCardWidth, height: cardHeight)
         } else {
             placeholder
         }
@@ -122,7 +144,7 @@ struct ItemCard: View {
     private var placeholder: some View {
         Rectangle()
             .fill(theme.colorScheme.surface.opacity(0.3))
-            .frame(width: cardWidth, height: cardHeight)
+            .frame(width: safeCardWidth, height: cardHeight)
     }
 
     private var cardOverlays: some View {
@@ -132,7 +154,7 @@ struct ItemCard: View {
             watchIndicatorOverlay
             serverBadgeOverlay
         }
-        .frame(width: cardWidth, height: cardHeight)
+        .frame(width: safeCardWidth, height: cardHeight)
     }
 
     @ViewBuilder
@@ -143,7 +165,7 @@ struct ItemCard: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Rectangle()
-                            .fill(Color.black.opacity(0.5))
+                            .fill(theme.colorScheme.scrim.opacity(0.5))
                             .frame(height: 4)
                         Rectangle()
                             .fill(theme.accent)
@@ -161,9 +183,9 @@ struct ItemCard: View {
             VStack {
                 HStack {
                     Image(systemName: "heart.fill")
-                        .font(.caption2xs)
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.colorRed300)
-                        .padding(4)
+                        .padding(6)
                     Spacer()
                 }
                 Spacer()
@@ -181,19 +203,19 @@ struct ItemCard: View {
                     if watchedIndicator == .always || watchedIndicator == .episodesOnly,
                        let played = item.userData?.played, played {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.caption2xs)
-                            .foregroundColor(.colorGreen500)
-                            .padding(4)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(theme.isNeonPulseTheme ? theme.colorScheme.badge : .colorGreen500)
+                            .padding(6)
                     } else if let count = item.userData?.unplayedItemCount, count > 0 {
                         Text("\(count)")
-                            .font(.caption2xs)
+                            .font(.captionXs)
                             .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(theme.accent)
+                            .foregroundColor(theme.colorScheme.onBadge)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(theme.colorScheme.badge)
                             .clipShape(Capsule())
-                            .padding(4)
+                            .padding(6)
                     }
                 }
                 Spacer()
@@ -210,10 +232,10 @@ struct ItemCard: View {
                     Spacer()
                     Text(name)
                         .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(theme.colorScheme.onBadge)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
-                        .background(Color.black.opacity(0.7))
+                        .background(theme.colorScheme.scrim.opacity(0.7))
                         .clipShape(Capsule())
                         .padding(4)
                 }
@@ -225,7 +247,26 @@ struct ItemCard: View {
 struct ItemCardButtonStyle: ButtonStyle {
     let isFocused: Bool
     let cornerRadius: CGFloat
+    let focusScale: CGFloat
     let focusBorderColor: Color
+    let focusGlow: [ThemeShadowSpec]
+    let animateFocusChange: Bool
+
+    init(
+        isFocused: Bool,
+        cornerRadius: CGFloat,
+        focusScale: CGFloat = 1.05,
+        focusBorderColor: Color,
+        focusGlow: [ThemeShadowSpec],
+        animateFocusChange: Bool = true
+    ) {
+        self.isFocused = isFocused
+        self.cornerRadius = cornerRadius
+        self.focusScale = focusScale
+        self.focusBorderColor = focusBorderColor
+        self.focusGlow = focusGlow
+        self.animateFocusChange = animateFocusChange
+    }
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -233,8 +274,20 @@ struct ItemCardButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(isFocused ? focusBorderColor : .clear, lineWidth: isFocused ? 3 : 0)
             )
-            .scaleEffect(isFocused ? 1.05 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: isFocused)
+            .shadow(
+                color: isFocused && focusGlow.count > 0 ? focusGlow[0].color.color : .clear,
+                radius: focusGlow.count > 0 ? focusGlow[0].blurRadius : 0,
+                x: focusGlow.count > 0 ? focusGlow[0].offsetX : 0,
+                y: focusGlow.count > 0 ? focusGlow[0].offsetY : 0
+            )
+            .shadow(
+                color: isFocused && focusGlow.count > 1 ? focusGlow[1].color.color : .clear,
+                radius: focusGlow.count > 1 ? focusGlow[1].blurRadius : 0,
+                x: focusGlow.count > 1 ? focusGlow[1].offsetX : 0,
+                y: focusGlow.count > 1 ? focusGlow[1].offsetY : 0
+            )
+            .scaleEffect(isFocused ? focusScale : 1.0)
+            .animation(animateFocusChange ? .easeInOut(duration: 0.15) : nil, value: isFocused)
     }
 }
 

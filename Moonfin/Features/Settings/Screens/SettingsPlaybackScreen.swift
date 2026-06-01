@@ -7,73 +7,87 @@ struct SettingsPlaybackScreen: View {
 
     private var prefs: UserPreferences { container.userPreferences }
 
-    private var stillWatchingLabel: String {
-        let val = prefs[UserPreferences.stillWatchingThreshold]
-        return val > 0 ? Strings.episodeCount(val) : Strings.disabled
-    }
-
-    private var nextUpTimeoutLabel: String {
-        let val = prefs[UserPreferences.nextUpTimeout]
-        return val > 0 ? "\(val)\(Strings.secondsShort)" : Strings.disabled
-    }
-
     private var supportsMediaSegments: Bool {
         container.serverRepository.currentServer.value?.serverType.supports(.mediaSegments) == true
     }
 
+    private var bitrateLabel: String {
+        let value = prefs[UserPreferences.maxBitrate]
+        if value == 0 { return Strings.optionAuto }
+        if value >= 1_000_000 {
+            return Strings.settingsPlaybackScreenBitrateMbps(value / 1_000_000)
+        }
+        return Strings.playerBitrateKbps(value / 1000)
+    }
+
     var body: some View {
-        SettingsScreenLayout(title: Strings.playbackSettings) {
-            SettingsListButton(
-                icon: "forward.end",
-                heading: Strings.nextUpBehaviorTitle,
-                caption: Strings.nextUpBehaviorDescription,
-                trailingText: prefs[UserPreferences.nextUpBehavior].displayName,
-                action: { settingsRouter.navigate(to: .playbackNextUpBehavior) }
-            )
-            .focused($focusedRoute, equals: .playbackNextUpBehavior)
-
-            SettingsListButton(
-                icon: "timer",
-                heading: Strings.nextUpTimeoutTitle,
-                caption: Strings.nextUpTimeoutDescription,
-                trailingText: nextUpTimeoutLabel,
-                action: { settingsRouter.navigate(to: .playbackNextUpTimeout) }
-            )
-            .focused($focusedRoute, equals: .playbackNextUpTimeout)
-
-            SettingsListButton(
-                icon: "pause.circle",
-                heading: Strings.stillWatchingPrompt,
-                caption: Strings.stillWatchingPromptDescription,
-                trailingText: stillWatchingLabel,
-                action: { settingsRouter.navigate(to: .playbackInactivityPrompt) }
-            )
-            .focused($focusedRoute, equals: .playbackInactivityPrompt)
-
-            SettingsListButton(
-                icon: "speaker.wave.2",
-                heading: Strings.audioBehavior,
-                caption: Strings.audioBehaviorDescription,
-                trailingText: prefs[UserPreferences.audioBehavior].displayName,
-                action: { settingsRouter.navigate(to: .playbackAudioBehavior) }
-            )
-            .focused($focusedRoute, equals: .playbackAudioBehavior)
-
-            SettingsListButton(
-                icon: "photo.on.rectangle",
-                heading: Strings.slideshowInterval,
-                caption: Strings.slideshowIntervalDescription,
-                trailingText: prefs[UserPreferences.photoSlideshowInterval].displayName,
-                action: { settingsRouter.navigate(to: .playbackSlideshowInterval) }
-            )
-            .focused($focusedRoute, equals: .playbackSlideshowInterval)
+        SettingsScreenLayout(title: Strings.settingsPlaybackScreenVideoPlaybackPreferences) {
+            if supportsMediaSegments {
+                SettingsListButton(
+                    icon: "scissors",
+                    heading: Strings.settingsPlaybackScreenSkipIntrosAndOutros,
+                    caption: Strings.settingsPlaybackScreenChooseActionBehavior,
+                    action: { settingsRouter.navigate(to: .playbackMediaSegments) }
+                )
+                .focused($focusedRoute, equals: .playbackMediaSegments)
+            } else {
+                SettingsListButton(
+                    icon: "scissors",
+                    heading: Strings.settingsPlaybackScreenSkipIntrosAndOutros,
+                    caption: Strings.settingsPlaybackScreenNotAvailableOnServer,
+                    action: { }
+                )
+            }
 
             SettingsToggleButton(
-                icon: "film.stack",
-                heading: Strings.prerollsEnabled,
-                caption: Strings.prerollsEnabledDescription,
-                isOn: prefs.binding(for: UserPreferences.cinemaModeEnabled)
+                icon: "pause.circle",
+                heading: Strings.settingsPlaybackScreenShowDescriptionOnPause,
+                caption: Strings.settingsPlaybackScreenShowDescriptionOnPauseCaption,
+                isOn: prefs.binding(for: UserPreferences.showDescriptionOnPause)
             )
+
+            SettingsListButton(
+                icon: "speedometer",
+                heading: Strings.settingsPlaybackScreenMaxStreamingBitrate,
+                caption: Strings.settingsPlaybackScreenMaxStreamingBitrateCaption,
+                trailingText: bitrateLabel,
+                action: { settingsRouter.navigate(to: .playbackMaxBitrate) }
+            )
+            .focused($focusedRoute, equals: .playbackMaxBitrate)
+
+            SettingsListButton(
+                icon: "rectangle.badge.checkmark",
+                heading: Strings.settingsPlaybackScreenMaxResolution,
+                caption: Strings.settingsPlaybackScreenMaxResolutionCaption,
+                trailingText: prefs[UserPreferences.maxVideoResolution].displayName,
+                action: { settingsRouter.navigate(to: .playbackMaxResolution) }
+            )
+            .focused($focusedRoute, equals: .playbackMaxResolution)
+
+            SettingsListButton(
+                icon: "arrow.up.left.and.arrow.down.right",
+                heading: Strings.settingsPlaybackScreenPlayerZoomMode,
+                caption: Strings.settingsPlaybackScreenPlayerZoomModeCaption,
+                trailingText: prefs[UserPreferences.playerZoomMode].displayName,
+                action: { settingsRouter.navigate(to: .playbackZoomMode) }
+            )
+            .focused($focusedRoute, equals: .playbackZoomMode)
+
+            SettingsToggleButton(
+                icon: "memorychip",
+                heading: Strings.settingsPlaybackScreenHardwareDecoding,
+                caption: Strings.settingsPlaybackScreenHardwareDecodingCaption,
+                isOn: prefs.binding(for: UserPreferences.hardwareDecoding)
+            )
+
+            SettingsListButton(
+                icon: "speedometer",
+                heading: Strings.settingsPlaybackScreenRefreshRateSwitching,
+                caption: Strings.settingsPlaybackScreenRefreshRateSwitchingCaption,
+                trailingText: prefs[UserPreferences.refreshRateSwitchingBehavior].displayName,
+                action: { settingsRouter.navigate(to: .playbackRefreshRateSwitching) }
+            )
+            .focused($focusedRoute, equals: .playbackRefreshRateSwitching)
 
             SettingsToggleButton(
                 icon: "film.stack",
@@ -82,23 +96,39 @@ struct SettingsPlaybackScreen: View {
                 isOn: prefs.binding(for: UserPreferences.trickPlayEnabled)
             )
 
-            if supportsMediaSegments {
-                SettingsListButton(
-                    icon: "scissors",
-                    heading: Strings.mediaSegmentsSettings,
-                    caption: Strings.mediaSegmentsDescription,
-                    action: { settingsRouter.navigate(to: .playbackMediaSegments) }
-                )
-                .focused($focusedRoute, equals: .playbackMediaSegments)
-            }
+            SettingsListButton(
+                icon: "gobackward",
+                heading: Strings.settingsPlaybackScreenResumeRewind,
+                caption: Strings.settingsPlaybackScreenResumeRewindCaption,
+                action: { settingsRouter.navigate(to: .playbackResumeSubtractDuration) }
+            )
+            .focused($focusedRoute, equals: .playbackResumeSubtractDuration)
 
             SettingsListButton(
-                icon: "gearshape.2",
-                heading: Strings.advanced,
-                caption: Strings.advancedDescription,
-                action: { settingsRouter.navigate(to: .playbackAdvanced) }
+                icon: "arrow.uturn.backward",
+                heading: Strings.settingsPlaybackScreenUnpauseRewind,
+                caption: Strings.settingsPlaybackScreenUnpauseRewindCaption,
+                action: { settingsRouter.navigate(to: .playbackUnpauseRewind) }
             )
-            .focused($focusedRoute, equals: .playbackAdvanced)
+            .focused($focusedRoute, equals: .playbackUnpauseRewind)
+
+            SettingsListButton(
+                icon: "backward.fill",
+                heading: Strings.settingsPlaybackScreenSkipBackLength,
+                caption: Strings.settingsPlaybackScreenSkipBackLengthCaption,
+                trailingText: Strings.settingsPlaybackScreenSecondsShort(prefs[UserPreferences.skipBackLength]),
+                action: { settingsRouter.navigate(to: .playbackSkipBackLength) }
+            )
+            .focused($focusedRoute, equals: .playbackSkipBackLength)
+
+            SettingsListButton(
+                icon: "forward.fill",
+                heading: Strings.settingsPlaybackScreenSkipForwardLength,
+                caption: Strings.settingsPlaybackScreenSkipForwardLengthCaption,
+                action: { settingsRouter.navigate(to: .playbackSkipForwardLength) }
+            )
+            .focused($focusedRoute, equals: .playbackSkipForwardLength)
+
         }
         .restoresFocus($focusedRoute)
     }

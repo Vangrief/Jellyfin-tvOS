@@ -23,6 +23,7 @@ final class ServerStreamResolver: StreamResolver {
         mediaSourceId: String?,
         maxBitrate: Int64?,
         maxAudioChannels: Int?,
+        atmosPassthroughEnabled: Bool,
         audioStreamIndex: Int?,
         subtitleStreamIndex: Int?,
         startTimeTicks: Int64?
@@ -121,7 +122,8 @@ final class ServerStreamResolver: StreamResolver {
             requestedBackend: requestedBackend,
             selectedAudioStream: selectedAudioStream,
             canTranscode: source.transcodingUrl != nil,
-            maxAudioChannels: maxAudioChannels
+            maxAudioChannels: maxAudioChannels,
+            atmosPassthroughEnabled: atmosPassthroughEnabled
         )
 
         let capabilities = await MainActor.run { VideoCapabilityDetector.current() }
@@ -135,15 +137,8 @@ final class ServerStreamResolver: StreamResolver {
             nativeDvEnabled: nativeDvEnabled
         )
 
-        let preferredBackend: PlaybackBackendDirective
-        let isDolbyVision = dynamicRange == .dolbyVision
-        if videoPolicy.backend == .native {
-            preferredBackend = .native
-        } else if isDolbyVision {
-            preferredBackend = videoPolicy.backend
-        } else {
-            preferredBackend = .mpv
-        }
+        let preferredBackend: PlaybackBackendDirective =
+            (videoPolicy.backend == .native || audioPolicy.backend == .native) ? .native : .mpv
         let fallbackReason = audioPolicy.reason ?? videoPolicy.reason
         let combinedDiagnostics = videoPolicy.diagnostics + audioPolicy.diagnostics
 
@@ -197,13 +192,16 @@ final class ServerStreamResolver: StreamResolver {
                 defaultAudioStreamIndex: source.defaultAudioStreamIndex,
                 defaultSubtitleStreamIndex: source.defaultSubtitleStreamIndex,
                 dynamicRange: dynamicRange,
+                dvProfile: videoStream?.dvProfile,
+                dvLevel: videoStream?.dvLevel,
+                dvBlSignalCompatibilityId: videoStream?.dvBlSignalCompatibilityId,
                 preferredBackend: preferredBackend,
                 fallbackReason: fallbackReason,
                 diagnostics: combinedDiagnostics
             )
         } else if let transcodingUrl = source.transcodingUrl {
             let method: PlayMethod = source.supportsDirectStream ? .directStream : .transcode
-            var url = buildTranscodingUrl(transcodingUrl)
+            var url = buildTranscodingUrl(transcodingUrl, maxBitrate: maxBitrate)
             if isLiveTv, let liveStreamId = source.liveStreamId, !liveStreamId.isEmpty {
                 let separator = url.contains("?") ? "&" : "?"
                 url += "\(separator)LiveStreamId=\(liveStreamId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? liveStreamId)"
@@ -220,6 +218,9 @@ final class ServerStreamResolver: StreamResolver {
                 defaultAudioStreamIndex: source.defaultAudioStreamIndex,
                 defaultSubtitleStreamIndex: source.defaultSubtitleStreamIndex,
                 dynamicRange: dynamicRange,
+                dvProfile: videoStream?.dvProfile,
+                dvLevel: videoStream?.dvLevel,
+                dvBlSignalCompatibilityId: videoStream?.dvBlSignalCompatibilityId,
                 preferredBackend: preferredBackend,
                 fallbackReason: fallbackReason,
                 diagnostics: combinedDiagnostics + [isLiveTv ? "resolved_via=livetv_transcode" : "resolved_via=transcode"]
@@ -253,6 +254,9 @@ final class ServerStreamResolver: StreamResolver {
                 defaultAudioStreamIndex: source.defaultAudioStreamIndex,
                 defaultSubtitleStreamIndex: source.defaultSubtitleStreamIndex,
                 dynamicRange: .unknown,
+                dvProfile: nil,
+                dvLevel: nil,
+                dvBlSignalCompatibilityId: nil,
                 preferredBackend: requestedBackend,
                 fallbackReason: nil,
                 diagnostics: ["resolved_via=livetv"]
@@ -304,13 +308,16 @@ final class ServerStreamResolver: StreamResolver {
             defaultAudioStreamIndex: nil,
             defaultSubtitleStreamIndex: nil,
             dynamicRange: .unknown,
+            dvProfile: nil,
+            dvLevel: nil,
+            dvBlSignalCompatibilityId: nil,
             preferredBackend: requestedBackend,
             fallbackReason: nil,
             diagnostics: ["resolved_via=livetv_fallback"]
         )
     }
 
-    private func buildTranscodingUrl(_ path: String) -> String {
+    private func buildTranscodingUrl(_ path: String, maxBitrate: Int64?) -> String {
         let absolutePath: String
         if path.hasPrefix("http") {
             absolutePath = path
@@ -329,11 +336,24 @@ final class ServerStreamResolver: StreamResolver {
             return absolutePath
         }
         var queryItems = components.queryItems ?? []
+        if let maxBitrate, maxBitrate > 0 {
+            let bitrateValue = String(maxBitrate)
+            upsertQueryItem(name: "VideoBitrate", value: bitrateValue, queryItems: &queryItems)
+            upsertQueryItem(name: "MaxStreamingBitrate", value: bitrateValue, queryItems: &queryItems)
+        }
         if !queryItems.contains(where: { $0.name == "api_key" }) {
             queryItems.append(URLQueryItem(name: "api_key", value: token))
-            components.queryItems = queryItems
         }
+        components.queryItems = queryItems
         return components.url?.absoluteString ?? absolutePath
+    }
+
+    private func upsertQueryItem(name: String, value: String, queryItems: inout [URLQueryItem]) {
+        if let idx = queryItems.firstIndex(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
+            queryItems[idx] = URLQueryItem(name: name, value: value)
+        } else {
+            queryItems.append(URLQueryItem(name: name, value: value))
+        }
     }
 
     private func normalizedContainer(_ rawContainer: String?, isAudio: Bool) -> String {

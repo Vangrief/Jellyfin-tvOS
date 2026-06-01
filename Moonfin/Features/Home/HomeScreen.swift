@@ -3,6 +3,7 @@ import Nuke
 
 struct HomeScreen: View {
     @StateObject private var viewModel: HomeViewModel
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject var container: AppContainer
     @EnvironmentObject var previewManager: PreviewPlayerManager
     @EnvironmentObject var theme: MoonfinTheme
@@ -14,8 +15,6 @@ struct HomeScreen: View {
     let sidebarHandoffToken: Int
     let onRequestTopNavbarHomeFocus: (() -> Void)?
     @State private var isMediaBarMode = true
-    @State private var sentinelEnabled = false
-    @State private var sentinelEnablePending = false
     @State private var focusedRowId: String?
     @State private var scrollTrigger: Int = 0
     @State private var lastFocusedRowId: String?
@@ -39,6 +38,20 @@ struct HomeScreen: View {
     @State private var sidebarEntryItemId: String?
     @State private var sidebarEntryWasMediaBar = false
     @State private var hasInitiallyFocusedFirstRow = false
+    @State private var appWasBackgrounded = false
+    @State private var lastMoveCommandDirection = "none"
+    @State private var lastMoveCommandAt: TimeInterval = 0
+    @State private var lastFocusEventAt: TimeInterval = 0
+    @State private var mediaBarDownHandoffInProgress = false
+    @State private var mediaBarDownHandoffStartedAt: TimeInterval = 0
+    @State private var mediaBarDownHandoffTargetRowId: String?
+    @State private var mediaBarDownHandoffTargetItemId: String?
+    @State private var mediaBarDownHandoffTargetReason: String = "none"
+    @State private var mediaBarDownHandoffToken: Int = 0
+    @State private var verticalTransitionToken: Int = 0
+    @State private var lastFocusedItemIndexByRowId: [String: Int] = [:]
+    @State private var lastSyncedMakdBackdropUrl: String?
+    @State private var lastVisibleRowIds: [String] = []
 
     private var navbarIsLeft: Bool {
         container.userPreferences[UserPreferences.navbarPosition] == .left
@@ -48,12 +61,39 @@ struct HomeScreen: View {
         navbarIsLeft ? LeftSidebar.sidebarInset : 50
     }
 
-    private var rowsShouldPreferDefaultFocus: Bool {
-        suppressTopNavbarInRows
+    private var isHomeRowsV2Mode: Bool {
+        container.userPreferences[UserPreferences.homeRowsStyle] == .v2
+    }
+
+    private var showHomeRowInfoOverlay: Bool {
+        guard !isHomeRowsV2Mode else { return false }
+        return container.userPreferences[UserPreferences.homeRowInfoOverlay]
+    }
+
+    private var posterSizePreference: PosterSize {
+        container.userPreferences[UserPreferences.homePosterSize]
+    }
+
+    private var shouldShowMediaBarReturnSentinel: Bool {
+        guard viewModel.mediaBarViewModel.isEnabled,
+              viewModel.isMediaBarActive,
+              !isMediaBarMode,
+              !mediaBarDownHandoffInProgress,
+              let firstRowId = viewModel.visibleRows.first?.id
+        else { return false }
+
+        let currentRowId = focusedRowId ?? lastFocusedRowId
+        return currentRowId == firstRowId
     }
 
     private var seasonalSurprise: SeasonalSurprise {
         container.userPreferences[UserPreferences.seasonalSurprise]
+    }
+
+    private var currentMediaBarMode: MediaBarMode {
+        let raw = UserDefaults.standard.string(forKey: UserPreferences.mediaBarMode.key)
+            ?? MediaBarMode.moonfin.rawValue
+        return MediaBarMode(rawValue: raw) ?? .moonfin
     }
 
     init(
@@ -74,11 +114,134 @@ struct HomeScreen: View {
         self.onRequestTopNavbarHomeFocus = onRequestTopNavbarHomeFocus
     }
 
+    private func debugLog(_ event: String, details: String = "") {
+#if DEBUG
+        guard ProcessInfo.processInfo.environment["MOONFIN_HOME_FOCUS_DEBUG"] == "1" else {
+            return
+        }
+        let timestamp = Date().timeIntervalSinceReferenceDate
+        if details.isEmpty {
+            print("[HomeNav] [\(timestamp)] \(event)")
+        } else {
+            print("[HomeNav] [\(timestamp)] \(event) | \(details)")
+        }
+#endif
+    }
+
+    private func directionLabel(_ direction: MoveCommandDirection) -> String {
+        switch direction {
+        case .up: return "up"
+        case .down: return "down"
+        case .left: return "left"
+        case .right: return "right"
+        default: return "unknown"
+        }
+    }
+
+    private func recordMoveCommand(_ direction: MoveCommandDirection, source: String) {
+        let now = Date().timeIntervalSinceReferenceDate
+        let repeatDeltaMs = lastMoveCommandAt > 0 ? Int((now - lastMoveCommandAt) * 1000) : -1
+        lastMoveCommandDirection = directionLabel(direction)
+        lastMoveCommandAt = now
+        debugLog(
+            "move_command",
+            details: "source=\(source) direction=\(lastMoveCommandDirection) repeat_delta_ms=\(repeatDeltaMs) is_media_bar_mode=\(isMediaBarMode) focused_row=\(focusedRowId ?? "nil")"
+        )
+    }
+
+    private func rowTypeLabel(_ rowType: HomeRowType) -> String {
+        switch rowType {
+        case .continueWatching: return "continueWatching"
+        case .resumeBook: return "resumeBook"
+        case .nextUp: return "nextUp"
+        case .latestMedia(let libraryId): return "latestMedia(\(libraryId))"
+        case .activeRecordings: return "activeRecordings"
+        case .recentlyReleased: return "recentlyReleased"
+        case .favorites: return "favorites"
+        case .favoriteMovies: return "favoriteMovies"
+        case .favoriteSeries: return "favoriteSeries"
+        case .favoriteEpisodes: return "favoriteEpisodes"
+        case .favoritePeople: return "favoritePeople"
+        case .favoriteArtists: return "favoriteArtists"
+        case .favoriteMusicVideos: return "favoriteMusicVideos"
+        case .favoriteAlbums: return "favoriteAlbums"
+        case .favoriteSongs: return "favoriteSongs"
+        case .collections: return "collections"
+        case .genres: return "genres"
+        case .myMedia: return "myMedia"
+        case .myMediaSmall: return "myMediaSmall"
+        case .resumeAudio: return "resumeAudio"
+        case .playlists: return "playlists"
+        case .liveTvButtons: return "liveTvButtons"
+        case .liveTvOnNow: return "liveTvOnNow"
+        case .liveTvComingUp: return "liveTvComingUp"
+        case .mediaBar: return "mediaBar"
+        case .none: return "none"
+        }
+    }
+
+    private func isMusicItem(_ item: ServerItem) -> Bool {
+        switch item.type {
+        case .audio, .musicAlbum, .musicArtist, .musicVideo, .musicGenre:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func isMusicRow(_ row: HomeRow) -> Bool {
+        switch row.rowType {
+        case .resumeAudio, .playlists:
+            return true
+        case .latestMedia:
+            if row.isMusicLibraryRow { return true }
+            guard let first = row.items.first else { return false }
+            return isMusicItem(first)
+        default:
+            return false
+        }
+    }
+
+    private func posterTypeLabel(for row: HomeRow) -> String {
+        if isMusicRow(row) {
+            return "poster(music_forced)"
+        }
+
+        switch row.rowType {
+        case .continueWatching, .resumeBook:
+            return container.userPreferences[UserPreferences.homeImageTypeContinueWatching].rawValue
+        case .nextUp:
+            return container.userPreferences[UserPreferences.homeImageTypeNextUp].rawValue
+        case .myMedia:
+            return container.userPreferences[UserPreferences.homeImageTypeMyMedia].rawValue
+        case .liveTvOnNow, .liveTvComingUp:
+            return container.userPreferences[UserPreferences.homeImageTypeLiveTv].rawValue
+        case .myMediaSmall:
+            return "fixed_library_action"
+        case .liveTvButtons:
+            return "fixed_livetv_button"
+        default:
+            return container.userPreferences[UserPreferences.homeImageTypeLibraries].rawValue
+        }
+    }
+
+    private func safeDimension(_ value: CGFloat, fallback: CGFloat = 0) -> CGFloat {
+        if value.isFinite, value >= 0 {
+            return value
+        }
+        debugLog("invalid_dimension_sanitized", details: "value=\(value) fallback=\(fallback)")
+        return fallback
+    }
+
     private func resolveFocus(delay: UInt64 = 50_000_000) {
         focusTask?.cancel()
         focusTask = Task {
             try? await Task.sleep(nanoseconds: delay)
             guard !Task.isCancelled else { return }
+            if mediaBarDownHandoffInProgress {
+                debugLog("resolve_focus_skipped", details: "reason=media_bar_down_handoff")
+                return
+            }
             if isRestoringPosition, lastFocusedRowId != nil {
                 restoreScrollTrigger += 1
                 try? await Task.sleep(nanoseconds: 150_000_000)
@@ -88,7 +251,6 @@ struct HomeScreen: View {
             }
             if isRestoringPosition {
                 isRestoringPosition = false
-                sentinelEnabled = viewModel.isMediaBarActive
             }
             if isMediaBarMode && viewModel.isMediaBarActive {
                 mediaBarRequestFocus = true
@@ -102,11 +264,48 @@ struct HomeScreen: View {
         }
     }
 
+    private func handleAppDidBecomeActive() {
+        focusTask?.cancel()
+        restoreTask?.cancel()
+        mediaBarRequestFocus = false
+
+        reconcileFocusStateForVisibleRows()
+
+        if let restoreRowId = lastFocusedRowId {
+            isMediaBarMode = false
+            focusedRowId = restoreRowId
+            isRestoringPosition = true
+            hasInitiallyFocusedFirstRow = true
+            resolveFocus(delay: 100_000_000)
+            scheduleSidebarRowRestore(delay: 150_000_000)
+            return
+        }
+
+        isRestoringPosition = false
+
+        if viewModel.isMediaBarActive {
+            isMediaBarMode = true
+            viewModel.mediaBarViewModel.resume()
+            requestMediaBarFocus(after: 0)
+            return
+        }
+
+        if viewModel.hasFocusableContent {
+            isMediaBarMode = false
+            focusFirstRowTrigger += 1
+            scheduleSidebarRowRestore(delay: 100_000_000)
+        }
+    }
+
     private func scheduleSidebarRowRestore(delay: UInt64 = 100_000_000) {
         restoreTask?.cancel()
         restoreTask = Task {
             try? await Task.sleep(nanoseconds: delay)
             guard !Task.isCancelled else { return }
+            guard !mediaBarDownHandoffInProgress else {
+                debugLog("restore_row_focus_skipped", details: "reason=media_bar_down_handoff")
+                return
+            }
             restoreRowFocusTrigger += 1
         }
     }
@@ -126,6 +325,226 @@ struct HomeScreen: View {
     private func syncTopNavbarSuppression() {
         let mediaBarEnabled = viewModel.mediaBarViewModel.isEnabled
         suppressTopNavbarInRows = mediaBarEnabled && (!isMediaBarMode || suppressTopNavbarUntilMediaBarFocus)
+    }
+
+    private func row(withId rowId: String?) -> HomeRow? {
+        guard let rowId else { return nil }
+        return viewModel.visibleRows.first(where: { $0.id == rowId })
+    }
+
+    private func resolvedItemId(in row: HomeRow, preferredItemId: String?) -> String? {
+        guard !row.items.isEmpty else { return nil }
+
+        if let preferredItemId,
+           row.items.contains(where: { $0.id == preferredItemId }) {
+            return preferredItemId
+        }
+
+        if let rememberedIndex = lastFocusedItemIndexByRowId[row.id] {
+            let clampedIndex = max(0, min(rememberedIndex, row.items.count - 1))
+            return row.items[clampedIndex].id
+        }
+
+        return row.items.first?.id
+    }
+
+    private func resolveValidRestoreTarget(rowId: String?, itemId: String?) -> (rowId: String?, itemId: String?) {
+        guard let rowId else { return (nil, nil) }
+        guard let targetRow = row(withId: rowId) ?? viewModel.visibleRows.first else {
+            return (nil, nil)
+        }
+
+        let targetItemId = resolvedItemId(in: targetRow, preferredItemId: itemId)
+        return (targetRow.id, targetItemId)
+    }
+
+    private func reconcileFocusStateForVisibleRows() {
+        let rows = viewModel.visibleRows
+        let rowById = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
+        let visibleRowIds = Set(rowById.keys)
+
+        func visibleRow(for rowId: String?) -> HomeRow? {
+            guard let rowId else { return nil }
+            return rowById[rowId]
+        }
+
+        var sanitizedItemIndexByRowId: [String: Int] = [:]
+        for row in rows {
+            guard let rememberedIndex = lastFocusedItemIndexByRowId[row.id], !row.items.isEmpty else { continue }
+            sanitizedItemIndexByRowId[row.id] = max(0, min(rememberedIndex, row.items.count - 1))
+        }
+        if sanitizedItemIndexByRowId != lastFocusedItemIndexByRowId {
+            lastFocusedItemIndexByRowId = sanitizedItemIndexByRowId
+        }
+
+        if let sidebarEntryRowId, !visibleRowIds.contains(sidebarEntryRowId) {
+            self.sidebarEntryRowId = nil
+            sidebarEntryItemId = nil
+        } else if let row = visibleRow(for: sidebarEntryRowId) {
+            sidebarEntryItemId = resolvedItemId(in: row, preferredItemId: sidebarEntryItemId)
+        }
+
+        guard let firstVisibleRow = rows.first else {
+            if focusedRowId != nil {
+                focusedRowId = nil
+            }
+            if isRestoringPosition {
+                isRestoringPosition = false
+            }
+            if mediaBarDownHandoffInProgress {
+                mediaBarDownHandoffInProgress = false
+                mediaBarDownHandoffTargetRowId = nil
+                mediaBarDownHandoffTargetItemId = nil
+                mediaBarDownHandoffTargetReason = "rows_empty"
+            }
+            return
+        }
+
+        if mediaBarDownHandoffInProgress {
+            let targetRow = visibleRow(for: mediaBarDownHandoffTargetRowId) ?? firstVisibleRow
+            let targetItemId = resolvedItemId(in: targetRow, preferredItemId: mediaBarDownHandoffTargetItemId)
+            if mediaBarDownHandoffTargetRowId != targetRow.id
+                || mediaBarDownHandoffTargetItemId != targetItemId {
+                retargetMediaBarDownHandoff(rowId: targetRow.id, itemId: targetItemId, reason: "rows_mutated")
+            }
+        }
+
+        if let focusedRowId, !visibleRowIds.contains(focusedRowId) {
+            if mediaBarDownHandoffInProgress {
+                self.focusedRowId = firstVisibleRow.id
+                scrollTrigger += 1
+            } else {
+                self.focusedRowId = nil
+            }
+        }
+
+        if let lastFocusedRowId {
+            let targetRow = visibleRow(for: lastFocusedRowId) ?? firstVisibleRow
+            let targetItemId = resolvedItemId(in: targetRow, preferredItemId: lastFocusedItemId)
+
+            if targetRow.id != lastFocusedRowId {
+                isRestoringPosition = true
+                restoreRowFocusTrigger += 1
+            }
+
+            self.lastFocusedRowId = targetRow.id
+            self.lastFocusedItemId = targetItemId
+
+            if focusedRowId == nil {
+                focusedRowId = targetRow.id
+            }
+
+            if let targetItemId,
+               let itemIndex = targetRow.items.firstIndex(where: { $0.id == targetItemId }) {
+                lastFocusedItemIndexByRowId[targetRow.id] = itemIndex
+            }
+        } else if isRestoringPosition {
+            isRestoringPosition = false
+        }
+    }
+
+    private func shouldApplyRestorationDefaultFocus(for rowId: String) -> Bool {
+        if mediaBarDownHandoffInProgress,
+           mediaBarDownHandoffTargetRowId == rowId,
+           let handoffRow = row(withId: rowId),
+           !handoffRow.items.isEmpty {
+            return true
+        }
+
+        guard isRestoringPosition,
+              !mediaBarDownHandoffInProgress,
+              lastFocusedRowId == rowId,
+              let restoreRow = row(withId: rowId),
+              !restoreRow.items.isEmpty
+        else { return false }
+        return true
+    }
+
+    private func resolveMediaBarDownTarget(for row: HomeRow) -> (itemId: String?, itemIndex: Int?, reason: String) {
+        guard !row.items.isEmpty else { return (nil, nil, "empty_row") }
+
+        return (row.items.first?.id, 0, "media_bar_down_first_item_forced")
+    }
+
+    private func resolveVerticalTransitionTarget(from sourceRowId: String?, to targetRow: HomeRow) -> (itemId: String, itemIndex: Int)? {
+        guard let sourceRowId,
+              !targetRow.items.isEmpty,
+              let sourceIndex = lastFocusedItemIndexByRowId[sourceRowId]
+        else { return nil }
+
+        let clampedIndex = max(0, min(sourceIndex, targetRow.items.count - 1))
+        return (targetRow.items[clampedIndex].id, clampedIndex)
+    }
+
+    private func retargetMediaBarDownHandoff(rowId: String, itemId: String?, reason: String) {
+        mediaBarDownHandoffTargetRowId = rowId
+        mediaBarDownHandoffTargetItemId = itemId
+        mediaBarDownHandoffTargetReason = reason
+        mediaBarDownHandoffToken += 1
+        debugLog(
+            "media_bar_down_handoff_retarget",
+            details: "token=\(mediaBarDownHandoffToken) reason=\(reason) target_row=\(rowId) target_item=\(itemId ?? "nil")"
+        )
+    }
+
+    private func moveFocusToFirstRowFromMediaBar() {
+        guard let firstVisibleRow = viewModel.visibleRows.first else {
+            debugLog("media_bar_down_handoff_aborted", details: "reason=no_visible_rows")
+            return
+        }
+
+        let firstVisibleRowId = firstVisibleRow.id
+        let resolvedTarget = resolveMediaBarDownTarget(for: firstVisibleRow)
+        let firstVisibleItemId = resolvedTarget.itemId
+        mediaBarDownHandoffToken += 1
+        let handoffToken = mediaBarDownHandoffToken
+        mediaBarDownHandoffInProgress = true
+        mediaBarDownHandoffStartedAt = Date().timeIntervalSinceReferenceDate
+        mediaBarDownHandoffTargetRowId = firstVisibleRowId
+        mediaBarDownHandoffTargetItemId = firstVisibleItemId
+        mediaBarDownHandoffTargetReason = resolvedTarget.reason
+
+        isMediaBarMode = false
+        isRestoringPosition = false
+        focusedRowId = firstVisibleRowId
+
+        // Force a deterministic handoff target to avoid media-bar down skipping to the next row.
+        lastFocusedRowId = firstVisibleRowId
+        lastFocusedItemId = firstVisibleItemId
+        if let resolvedIndex = resolvedTarget.itemIndex {
+            lastFocusedItemIndexByRowId[firstVisibleRowId] = resolvedIndex
+        }
+        scrollTrigger += 1
+
+        debugLog(
+            "media_bar_down_handoff_start",
+            details: "token=\(handoffToken) target_row=\(firstVisibleRowId) target_item=\(firstVisibleItemId ?? "nil") target_index=\(resolvedTarget.itemIndex.map(String.init) ?? "nil") target_reason=\(resolvedTarget.reason) visible_rows=\(viewModel.visibleRows.count)"
+        )
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            guard handoffToken == mediaBarDownHandoffToken,
+                  mediaBarDownHandoffInProgress
+            else { return }
+            resetFocus(in: rowsNamespace)
+            debugLog("media_bar_down_handoff_reset_focus", details: "namespace=rows attempt=0")
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            if handoffToken == mediaBarDownHandoffToken, mediaBarDownHandoffInProgress {
+                resetFocus(in: rowsNamespace)
+                debugLog("media_bar_down_handoff_retry", details: "attempt=1 token=\(handoffToken)")
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12.0) {
+            if handoffToken == mediaBarDownHandoffToken, mediaBarDownHandoffInProgress {
+                mediaBarDownHandoffInProgress = false
+                mediaBarDownHandoffTargetRowId = nil
+                mediaBarDownHandoffTargetItemId = nil
+                mediaBarDownHandoffTargetReason = "timeout"
+                debugLog("media_bar_down_handoff_timeout_clear", details: "duration_ms=12000")
+            }
+        }
     }
 
     var body: some View {
@@ -148,25 +567,20 @@ struct HomeScreen: View {
                         },
                         onPlayTrailer: { item in
                             cancelMediaBarTrailerPreview()
-                            Task { await playTrailerFromMediaBar(item) }
+                            Task { await playTrailerFromMediaBarAction(item) }
                         },
                         onFocusedItemChanged: { item in
                             lastContentAreaWasMediaBar = item != nil
+                            syncMakdBackdrop(for: item)
                             scheduleMediaBarTrailerPreview(for: item)
                         },
                         onNavigateDown: {
+                            recordMoveCommand(.down, source: "media_bar")
                             cancelMediaBarTrailerPreview()
-                            sentinelEnabled = false
-                            sentinelEnablePending = false
-                            isMediaBarMode = false
-                            let firstVisibleRowId = viewModel.visibleRows.first?.id
-                            lastFocusedRowId = firstVisibleRowId
-                            focusedRowId = firstVisibleRowId
-                            lastFocusedItemId = nil
-                            resolveFocus(delay: 50_000_000)
-                            scheduleSidebarRowRestore(delay: 150_000_000)
+                            moveFocusToFirstRowFromMediaBar()
                         },
                         onNavigateUp: {
+                            recordMoveCommand(.up, source: "media_bar")
                             onRequestTopNavbarHomeFocus?()
                         },
                         requestFocus: $mediaBarRequestFocus
@@ -182,19 +596,20 @@ struct HomeScreen: View {
                     if !mediaBarPresented {
                         HomeBackdropView(backgroundService: viewModel.backgroundService)
                         gradientOverlay
-                        HomeInfoAreaView(
-                            infoState: viewModel.infoState,
-                            ratingsViewModel: viewModel.mediaBarRatingsViewModel,
-                            contentLeading: contentLeading
-                        )
-                        .allowsHitTesting(false)
-                        .zIndex(1)
+                        if showHomeRowInfoOverlay {
+                            HomeInfoAreaView(
+                                infoState: viewModel.infoState,
+                                ratingsViewModel: viewModel.mediaBarRatingsViewModel,
+                                contentLeading: contentLeading
+                            )
+                            .allowsHitTesting(false)
+                            .zIndex(1)
+                        }
                     }
                     rowsContent(screenHeight: geo.size.height)
                         .disabled(mediaBarPresented)
                         .opacity(mediaBarPresented ? 0 : 1)
                         .offset(y: mediaBarPresented ? 28 : 0)
-                        .focusSection()
                         .zIndex(0)
 
                 }
@@ -205,6 +620,7 @@ struct HomeScreen: View {
         .environmentObject(viewModel.backgroundService)
         .onAppear {
             viewModel.loadContent()
+            lastVisibleRowIds = viewModel.visibleRows.map(\.id)
             suppressTopNavbarUntilMediaBarFocus = viewModel.mediaBarViewModel.isEnabled && lastFocusedRowId == nil
             syncTopNavbarSuppression()
             hasInitiallyFocusedFirstRow = false
@@ -216,9 +632,8 @@ struct HomeScreen: View {
                 isMediaBarMode = false
                 isRestoringPosition = true
                 hasInitiallyFocusedFirstRow = true
-                sentinelEnabled = false
-                sentinelEnablePending = false
                 resolveFocus(delay: 100_000_000)
+                scheduleSidebarRowRestore(delay: 150_000_000)
             } else if viewModel.isMediaBarActive {
                 isMediaBarMode = true
                 requestMediaBarFocus(after: 0)
@@ -226,11 +641,27 @@ struct HomeScreen: View {
         }
         .onDisappear {
             focusTask?.cancel()
-            sentinelEnablePending = false
             cancelMediaBarTrailerPreview()
             viewModel.mediaBarViewModel.cleanup()
             suppressTopNavbarUntilMediaBarFocus = false
             suppressTopNavbarInRows = false
+        }
+        .onChange(of: scenePhase) { phase in
+            switch phase {
+            case .background:
+                appWasBackgrounded = true
+                focusTask?.cancel()
+                restoreTask?.cancel()
+                cancelMediaBarTrailerPreview()
+            case .active:
+                guard appWasBackgrounded else { return }
+                appWasBackgrounded = false
+                handleAppDidBecomeActive()
+            case .inactive:
+                break
+            @unknown default:
+                break
+            }
         }
         .onChange(of: viewModel.isMediaBarActive) { active in
             if active && lastFocusedRowId == nil {
@@ -247,6 +678,17 @@ struct HomeScreen: View {
         .onChange(of: isMediaBarMode) { mode in
             syncTopNavbarSuppression()
             if mode { previewManager.stop() }
+            if !mode { clearMakdBackdropSync() }
+        }
+        .onChange(of: viewModel.mediaBarViewModel.currentItemBackdropUrl) { _ in
+            syncMakdBackdrop(for: viewModel.mediaBarViewModel.currentItem)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            if currentMediaBarMode == .makd {
+                syncMakdBackdrop(for: viewModel.mediaBarViewModel.currentItem)
+            } else {
+                clearMakdBackdropSync()
+            }
         }
         .onChange(of: container.inactivityTracker.isScreensaverVisible) { visible in
             if visible { previewManager.stop() }
@@ -254,6 +696,7 @@ struct HomeScreen: View {
         .onChange(of: viewModel.hasFocusableContent) { ready in
             if ready {
                 if !contentReady { contentReady = true }
+                guard !mediaBarDownHandoffInProgress else { return }
                 if !isRestoringPosition && !hasInitiallyFocusedFirstRow {
                     hasInitiallyFocusedFirstRow = true
                     if isMediaBarMode && viewModel.isMediaBarActive {
@@ -267,11 +710,27 @@ struct HomeScreen: View {
                 if !contentReady { contentReady = true }
             }
         }
+        .onReceive(viewModel.$visibleRows.dropFirst()) { rows in
+            let rowIds = rows.map(\.id)
+            guard rowIds != lastVisibleRowIds else { return }
+            lastVisibleRowIds = rowIds
+            reconcileFocusStateForVisibleRows()
+        }
         .onChange(of: sidebarHandoffToken) { _ in
-            guard viewModel.hasFocusableContent else { return }
+            guard viewModel.hasFocusableContent else {
+                DispatchQueue.main.async { resetFocus(in: mainNamespace) }
+                return
+            }
+            guard !mediaBarDownHandoffInProgress else {
+                debugLog("sidebar_handoff_skipped", details: "reason=media_bar_down_handoff")
+                return
+            }
             let restoreMediaBar = sidebarEntryWasMediaBar || (viewModel.isMediaBarActive && lastContentAreaWasMediaBar)
-            let restoreRowId = sidebarEntryRowId ?? lastFocusedRowId
-            let restoreItemId = sidebarEntryItemId ?? lastFocusedItemId
+            let requestedRestoreRowId = sidebarEntryRowId ?? lastFocusedRowId
+            let restoreTarget = resolveValidRestoreTarget(
+                rowId: requestedRestoreRowId,
+                itemId: sidebarEntryItemId ?? lastFocusedItemId
+            )
 
             if viewModel.isMediaBarActive && restoreMediaBar {
                 isMediaBarMode = true
@@ -286,10 +745,10 @@ struct HomeScreen: View {
             if !navbarIsLeft {
                 focusFirstRowTrigger += 1
             } else {
-                if let restoreRowId {
+                if let restoreRowId = restoreTarget.rowId {
                     focusedRowId = restoreRowId
                     lastFocusedRowId = restoreRowId
-                    lastFocusedItemId = restoreItemId
+                    lastFocusedItemId = restoreTarget.itemId
                     isRestoringPosition = true
                     hasInitiallyFocusedFirstRow = true
                     scrollTrigger += 1
@@ -377,7 +836,9 @@ struct HomeScreen: View {
     }
 
     private func rowsContent(screenHeight: CGFloat) -> some View {
-        let rowsTop = screenHeight * 0.38
+        let usesCompactTopInset = isHomeRowsV2Mode || !showHomeRowInfoOverlay
+        let rowsTop = safeDimension(screenHeight * (usesCompactTopInset ? 0.14 : 0.50))
+        let rowsBottomPadding = safeDimension(screenHeight * (isHomeRowsV2Mode ? 0.70 : 0.48))
 
         return VStack(spacing: 0) {
             Spacer()
@@ -386,14 +847,14 @@ struct HomeScreen: View {
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                        if viewModel.mediaBarViewModel.isEnabled && viewModel.isMediaBarActive && sentinelEnabled {
+                        if shouldShowMediaBarReturnSentinel {
                             MediaBarReturnSentinel(
                                 hasContent: !viewModel.visibleRows.isEmpty,
                                 onReturn: {
+                                    recordMoveCommand(.up, source: "media_bar_return_sentinel")
                                     isMediaBarMode = true
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                        mediaBarRequestFocus = true
-                                    }
+                                    requestMediaBarFocus(after: 0)
+                                    debugLog("row_vertical_move_to_media_bar", details: "source=media_bar_return_sentinel")
                                 }
                             )
                             .frame(height: 1)
@@ -407,34 +868,152 @@ struct HomeScreen: View {
                                     watchedIndicator: viewModel.watchedIndicator,
                                     titleTopPadding: viewModel.visibleRows.first?.id == row.id ? 4 : 0,
                                     onRowFocused: {
-                                        let isNewRow = focusedRowId != row.id
+                                        let rowIndex = viewModel.visibleRows.firstIndex(where: { $0.id == row.id }) ?? -1
                                         focusedRowId = row.id
 
-                                        if !sentinelEnabled && !sentinelEnablePending && !isMediaBarMode && viewModel.isMediaBarActive {
-                                            sentinelEnablePending = true
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                                sentinelEnablePending = false
-                                                if !isMediaBarMode {
-                                                    sentinelEnabled = true
-                                                }
-                                            }
-                                        }
+                                        let now = Date().timeIntervalSinceReferenceDate
+                                        let focusDeltaMs = lastFocusEventAt > 0 ? Int((now - lastFocusEventAt) * 1000) : -1
+                                        lastFocusEventAt = now
+
+                                        debugLog(
+                                            "row_focused",
+                                            details: "row_id=\(row.id) row_index=\(rowIndex) row_type=\(rowTypeLabel(row.rowType)) focus_delta_ms=\(focusDeltaMs) move_direction=\(lastMoveCommandDirection)"
+                                        )
 
                                         if isRestoringPosition {
                                             if row.id == lastFocusedRowId {
                                                 isRestoringPosition = false
-                                                sentinelEnablePending = false
-                                                sentinelEnabled = viewModel.isMediaBarActive
+                                                debugLog("restore_position_complete", details: "row_id=\(row.id) row_index=\(rowIndex)")
                                             }
-                                        } else if isNewRow {
-                                            scrollTrigger += 1
                                         }
                                     },
                                     onItemFocused: { item in
                                         lastContentAreaWasMediaBar = false
-                                        if !isRestoringPosition {
+
+                                        let rowIndex = viewModel.visibleRows.firstIndex(where: { $0.id == row.id }) ?? -1
+                                        let itemIndex = row.items.firstIndex(where: { $0.id == item.id }) ?? -1
+                                        let now = Date().timeIntervalSinceReferenceDate
+                                        let focusLatencyMs = lastMoveCommandAt > 0 ? Int((now - lastMoveCommandAt) * 1000) : -1
+                                        let focusDeltaMs = lastFocusEventAt > 0 ? Int((now - lastFocusEventAt) * 1000) : -1
+                                        lastFocusEventAt = now
+                                        let previousFocusedRowId = focusedRowId
+                                        if itemIndex >= 0 {
+                                            lastFocusedItemIndexByRowId[row.id] = itemIndex
+                                        }
+                                        let activeHandoffToken = mediaBarDownHandoffToken
+
+                                        if mediaBarDownHandoffInProgress {
+                                            let targetRowId = mediaBarDownHandoffTargetRowId
+                                                ?? viewModel.visibleRows.first?.id
+                                            let targetItemId = mediaBarDownHandoffTargetItemId
+                                                ?? viewModel.visibleRows.first?.items.first?.id
+
+                                            if let targetRowId, row.id != targetRowId {
+                                                focusedRowId = targetRowId
+                                                lastFocusedRowId = targetRowId
+                                                lastFocusedItemId = targetItemId
+                                                scrollTrigger += 1
+                                                retargetMediaBarDownHandoff(rowId: targetRowId, itemId: targetItemId, reason: "corrective_refocus")
+                                                resetFocus(in: rowsNamespace)
+                                                debugLog(
+                                                    "media_bar_down_handoff_corrective_refocus",
+                                                    details: "token=\(activeHandoffToken) focused_row=\(row.id) focused_row_index=\(rowIndex) corrective_target_row=\(targetRowId) corrective_target_item=\(targetItemId ?? "nil") move_direction=\(lastMoveCommandDirection) focus_latency_ms=\(focusLatencyMs)"
+                                                )
+                                                return
+                                            }
+
+                                            if let targetItemId, item.id != targetItemId {
+                                                if mediaBarDownHandoffTargetReason == "first_item" {
+                                                    mediaBarDownHandoffTargetItemId = item.id
+                                                    mediaBarDownHandoffTargetReason = "native_landing_adopted"
+                                                    lastFocusedItemId = item.id
+                                                    debugLog(
+                                                        "media_bar_down_handoff_adopt_native_item",
+                                                        details: "token=\(activeHandoffToken) row_id=\(row.id) row_index=\(rowIndex) item_id=\(item.id) item_index=\(itemIndex)"
+                                                    )
+                                                } else {
+                                                    focusedRowId = targetRowId
+                                                    lastFocusedRowId = targetRowId
+                                                    lastFocusedItemId = targetItemId
+                                                    if let targetRowId,
+                                                       let targetRow = viewModel.visibleRows.first(where: { $0.id == targetRowId }),
+                                                       let targetIndex = targetRow.items.firstIndex(where: { $0.id == targetItemId }) {
+                                                        lastFocusedItemIndexByRowId[targetRowId] = targetIndex
+                                                    }
+                                                    if let targetRowId {
+                                                        retargetMediaBarDownHandoff(rowId: targetRowId, itemId: targetItemId, reason: "corrective_item")
+                                                    }
+                                                    debugLog(
+                                                        "media_bar_down_handoff_corrective_item",
+                                                        details: "token=\(activeHandoffToken) row_id=\(row.id) row_index=\(rowIndex) current_item=\(item.id) corrective_item=\(targetItemId)"
+                                                    )
+                                                    return
+                                                }
+                                            }
+
+                                            mediaBarDownHandoffInProgress = false
+                                            mediaBarDownHandoffTargetRowId = nil
+                                            mediaBarDownHandoffTargetItemId = nil
+                                            mediaBarDownHandoffTargetReason = "complete"
+                                            let handoffDurationMs = mediaBarDownHandoffStartedAt > 0 ? Int((now - mediaBarDownHandoffStartedAt) * 1000) : -1
+                                            debugLog(
+                                                "media_bar_down_handoff_complete",
+                                                details: "token=\(activeHandoffToken) row_id=\(row.id) row_index=\(rowIndex) item_id=\(item.id) item_index=\(itemIndex) handoff_duration_ms=\(handoffDurationMs)"
+                                            )
+                                        }
+
+                                        let didEnterDifferentRow = previousFocusedRowId != row.id
+
+                                        if !isRestoringPosition,
+                                           didEnterDifferentRow,
+                                           (lastMoveCommandDirection == "down" || lastMoveCommandDirection == "up"),
+                                           let verticalTarget = resolveVerticalTransitionTarget(from: previousFocusedRowId, to: row),
+                                           verticalTarget.itemIndex != itemIndex {
+                                            let sourceRowLabel = previousFocusedRowId ?? "nil"
                                             focusedRowId = row.id
                                             lastFocusedRowId = row.id
+                                            lastFocusedItemId = verticalTarget.itemId
+                                            lastFocusedItemIndexByRowId[row.id] = verticalTarget.itemIndex
+                                            restoreRowFocusTrigger += 1
+                                            debugLog(
+                                                "vertical_transition_corrective_refocus",
+                                                details: "source_row=\(sourceRowLabel) target_row=\(row.id) expected_item=\(verticalTarget.itemId) expected_index=\(verticalTarget.itemIndex) current_item=\(item.id) current_index=\(itemIndex) direction=\(lastMoveCommandDirection)"
+                                            )
+                                            return
+                                        }
+
+                                        focusedRowId = row.id
+
+                                        debugLog(
+                                            "item_focused",
+                                            details: "row_id=\(row.id) row_index=\(rowIndex) item_id=\(item.id) item_index=\(itemIndex) row_type=\(rowTypeLabel(row.rowType)) poster_type=\(posterTypeLabel(for: row)) poster_size=\(posterSizePreference.rawValue) poster_scale=\(posterSizePreference.scaleFactor) is_v2_mode=\(isHomeRowsV2Mode) move_direction=\(lastMoveCommandDirection) focus_latency_ms=\(focusLatencyMs) focus_delta_ms=\(focusDeltaMs)"
+                                        )
+
+                                        if !isRestoringPosition {
+                                            lastFocusedRowId = row.id
+
+                                            if didEnterDifferentRow {
+                                                let previousRowIndex = previousFocusedRowId.flatMap { previousRowId in
+                                                    viewModel.visibleRows.firstIndex(where: { $0.id == previousRowId })
+                                                } ?? -1
+                                                let sourceItemId = previousFocusedRowId != nil ? lastFocusedItemId : nil
+                                                let sourceItemIndex = previousFocusedRowId.flatMap { previousRowId in
+                                                    lastFocusedItemIndexByRowId[previousRowId]
+                                                }
+                                                let direction: String = {
+                                                    guard previousRowIndex >= 0, rowIndex >= 0 else { return "unknown" }
+                                                    if rowIndex > previousRowIndex { return "down" }
+                                                    if rowIndex < previousRowIndex { return "up" }
+                                                    return "unknown"
+                                                }()
+                                                verticalTransitionToken += 1
+                                                scrollTrigger += 1
+                                                debugLog(
+                                                    "vertical_transition_land",
+                                                    details: "token=\(verticalTransitionToken) source_row=\(previousFocusedRowId ?? "nil") source_row_index=\(previousRowIndex) source_item=\(sourceItemId ?? "nil") source_item_index=\(sourceItemIndex.map(String.init) ?? "nil") direction=\(direction) target_row=\(row.id) target_row_index=\(rowIndex) target_item=\(item.id) target_item_index=\(itemIndex) scroll_trigger=\(scrollTrigger)"
+                                                )
+                                            }
+
                                             lastFocusedItemId = item.id
                                         }
                                     },
@@ -457,6 +1036,7 @@ struct HomeScreen: View {
                                     onToggleWatched: viewModel.toggleWatched,
                                     onToggleFavorite: viewModel.toggleFavorite,
                                     restoredItemId: lastFocusedRowId == row.id ? lastFocusedItemId : nil,
+                                    preferredItemId: mediaBarDownHandoffTargetRowId == row.id ? mediaBarDownHandoffTargetItemId : nil,
                                     focusTrigger: {
                                         if lastFocusedRowId == row.id {
                                             return restoreRowFocusTrigger
@@ -465,13 +1045,16 @@ struct HomeScreen: View {
                                             return focusFirstRowTrigger
                                         }
                                         return 0
-                                    }()
+                                    }(),
+                                    transitionToken: mediaBarDownHandoffTargetRowId == row.id ? mediaBarDownHandoffToken : 0,
+                                    isRowFocused: focusedRowId == row.id
                                 )
                                 .id(row.id)
-                                .prefersDefaultFocus(isRestoringPosition && lastFocusedRowId == row.id, in: rowsNamespace)
+                                .prefersDefaultFocus(shouldApplyRestorationDefaultFocus(for: row.id), in: rowsNamespace)
                             }
                         }
                         .focusScope(rowsNamespace)
+                        .padding(.bottom, rowsBottomPadding)
                     }
                     .padding(.leading, contentLeading)
                     .padding(.trailing, 50)
@@ -486,30 +1069,23 @@ struct HomeScreen: View {
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                        .frame(height: 30)
+                        .frame(height: 80)
 
                         Color.black
                     }
                 )
                 .onChange(of: scrollTrigger) { _ in
                     guard let id = focusedRowId else { return }
+                    debugLog("scroll_to_focused_row", details: "row_id=\(id) trigger=\(scrollTrigger)")
                     withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo(id, anchor: UnitPoint(x: 0, y: 0.05))
+                        proxy.scrollTo(id, anchor: .top)
                     }
                 }
                 .onChange(of: restoreScrollTrigger) { _ in
                     guard let rowId = lastFocusedRowId else { return }
+                    debugLog("scroll_restore_row", details: "row_id=\(rowId) trigger=\(restoreScrollTrigger)")
                     withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo(rowId, anchor: UnitPoint(x: 0, y: 0.05))
-                    }
-                }
-                .onAppear {
-                    if let rowId = lastFocusedRowId {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                proxy.scrollTo(rowId, anchor: UnitPoint(x: 0, y: 0.05))
-                            }
-                        }
+                        proxy.scrollTo(rowId, anchor: .top)
                     }
                 }
             }
@@ -594,7 +1170,16 @@ struct HomeScreen: View {
     }
 
     private func playTrailerFromMediaBar(_ slideItem: MediaBarSlideItem) async {
-        guard let server = container.serverRepository.currentServer.value else { return }
+        let resolvedServerId = slideItem.serverId
+        let server: Server?
+        if let resolvedServerId,
+           let parsedId = UUID.from(rawId: resolvedServerId) {
+            server = container.serverRepository.storedServers.value.first(where: { $0.id == parsedId })
+        } else {
+            server = container.serverRepository.currentServer.value
+        }
+
+        guard let server else { return }
         let client = container.serverClientFactory.client(for: server)
         guard let item = try? await client.userLibraryApi.getItem(itemId: slideItem.id) else { return }
 
@@ -607,6 +1192,7 @@ struct HomeScreen: View {
                 mediaSourceId: mediaSourceId,
                 maxBitrate: nil,
                 maxAudioChannels: nil,
+                atmosPassthroughEnabled: false,
                 audioStreamIndex: nil,
                 subtitleStreamIndex: nil,
                 startTimeTicks: nil
@@ -619,14 +1205,73 @@ struct HomeScreen: View {
             }
         }
 
-        guard let videoId = TrailerPlaybackHelper.firstYouTubeVideoId(from: item.remoteTrailers) else { return }
-        guard let result = await resolvePreviewStreamWithTimeout(videoId: videoId) else { return }
-        guard let streamInfo = result.stream else { return }
-        guard !Task.isCancelled, isMediaBarMode else { return }
+        for trailer in item.remoteTrailers ?? [] {
+            guard let rawUrl = trailer.url?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !rawUrl.isEmpty else {
+                continue
+            }
 
-        configureMediaBarPreview(isYouTube: true)
-        await inlineTrailerPlayer.play(url: streamInfo.url)
-        lastPreviewedMediaBarItemId = slideItem.id
+            if let videoId = TrailerPlaybackHelper.extractYouTubeVideoId(from: rawUrl) {
+                guard let result = await resolvePreviewStreamWithTimeout(videoId: videoId),
+                      let streamInfo = result.stream else {
+                    continue
+                }
+                guard !Task.isCancelled, isMediaBarMode else { return }
+
+                configureMediaBarPreview(isYouTube: true)
+                await inlineTrailerPlayer.play(url: streamInfo.url)
+                lastPreviewedMediaBarItemId = slideItem.id
+                return
+            }
+
+            guard URL(string: rawUrl) != nil else { continue }
+            guard !Task.isCancelled, isMediaBarMode else { return }
+
+            configureMediaBarPreview(isYouTube: false)
+            await inlineTrailerPlayer.play(streamUrl: rawUrl)
+            lastPreviewedMediaBarItemId = slideItem.id
+            return
+        }
+    }
+
+    private func playTrailerFromMediaBarAction(_ slideItem: MediaBarSlideItem) async {
+        let resolvedServerId = slideItem.serverId
+        let server: Server?
+        if let resolvedServerId,
+           let parsedId = UUID.from(rawId: resolvedServerId) {
+            server = container.serverRepository.storedServers.value.first(where: { $0.id == parsedId })
+        } else {
+            server = container.serverRepository.currentServer.value
+        }
+
+        guard let server else { return }
+        let client = container.serverClientFactory.client(for: server)
+        guard let item = try? await client.userLibraryApi.getItem(itemId: slideItem.id) else { return }
+
+        _ = await TrailerPlaybackHelper.playTrailer(
+            for: item,
+            client: client,
+            playbackCoordinator: container.playbackCoordinator,
+            router: router,
+            serverId: resolvedServerId
+        )
+    }
+
+    private func syncMakdBackdrop(for item: MediaBarSlideItem?) {
+        guard isMediaBarMode else { return }
+        guard currentMediaBarMode == .makd else {
+            clearMakdBackdropSync()
+            return
+        }
+        guard let backdropUrl = item?.backdropUrl, !backdropUrl.isEmpty else { return }
+        guard backdropUrl != lastSyncedMakdBackdropUrl else { return }
+
+        viewModel.backgroundService.setBackground(url: backdropUrl, context: .browsing)
+        lastSyncedMakdBackdropUrl = backdropUrl
+    }
+
+    private func clearMakdBackdropSync() {
+        lastSyncedMakdBackdropUrl = nil
     }
 }
 
@@ -665,8 +1310,8 @@ private struct HomeBackdropView: View {
 private struct HomeInfoAreaView: View {
     private static let logoReservedHeight: CGFloat = 128
     private static let logoMaxWidth: CGFloat = 560
-    private static let metaReservedHeight: CGFloat = 28
-    private static let ratingsReservedHeight: CGFloat = 40
+    private static let metaReservedHeight: CGFloat = 54
+    private static let ratingsReservedHeight: CGFloat = 54
     private static let summaryReservedHeight: CGFloat = 120
     private static let totalHeight: CGFloat =
         logoReservedHeight + metaReservedHeight + ratingsReservedHeight + summaryReservedHeight + (3 * SpaceTokens.spaceSm)
@@ -701,7 +1346,11 @@ private struct HomeInfoAreaView: View {
             }
             .frame(height: Self.logoReservedHeight, alignment: .leading)
 
-            SimpleInfoRow(item: infoState.selectedItemState.item, metadataSummary: infoState.selectedItemState.metadataSummary)
+            SimpleInfoRow(
+                item: infoState.selectedItemState.item,
+                metadataSummary: infoState.selectedItemState.metadataSummary,
+                sizeVariant: .small
+            )
                 .frame(height: Self.metaReservedHeight, alignment: .leading)
 
             ZStack(alignment: .leading) {
@@ -715,7 +1364,7 @@ private struct HomeInfoAreaView: View {
 
             ZStack(alignment: .topLeading) {
                 Text(infoState.selectedItemState.summary)
-                    .font(.bodyMd)
+                    .font(.bodySm)
                     .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
                     .lineLimit(4)
             }
@@ -752,25 +1401,15 @@ private struct MediaBarReturnSentinel: UIViewRepresentable {
 private class SentinelFocusView: UIView {
     var onReturnToMediaBar: (() -> Void)?
     var hasContent = false
-    private var passingThrough = false
 
-    override var canBecomeFocused: Bool { hasContent && !passingThrough }
+    override var canBecomeFocused: Bool { hasContent }
 
     override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
         super.didUpdateFocus(in: context, with: coordinator)
-        guard isFocused else { return }
-
-        if context.focusHeading.contains(.up) {
-            DispatchQueue.main.async { [weak self] in
-                self?.onReturnToMediaBar?()
-            }
-        } else {
-            passingThrough = true
-            DispatchQueue.main.async { [weak self] in
-                self?.setNeedsFocusUpdate()
-                self?.updateFocusIfNeeded()
-                self?.passingThrough = false
-            }
+        guard isFocused, context.focusHeading.contains(.up) else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.onReturnToMediaBar?()
         }
     }
 }
+

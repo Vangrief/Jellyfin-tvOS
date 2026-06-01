@@ -9,29 +9,29 @@ struct ItemCardOverlays: View {
         ZStack {
             if item.userData?.isFavorite ?? false {
                 Image(systemName: "heart.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(Color(hex: 0xFF4757))
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(theme.colorScheme.recording)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(6)
+                    .padding(8)
             }
 
             if let count = item.userData?.unplayedItemCount, count > 0 {
                 Text("\(count)")
-                    .font(.caption2xs)
+                    .font(.captionXs)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(theme.accent)
+                    .foregroundColor(theme.colorScheme.onBadge)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(theme.colorScheme.badge)
                     .clipShape(Capsule())
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(6)
+                    .padding(8)
             } else if item.userData?.played ?? false {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.colorGreen500)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.colorScheme.badge : .colorGreen500)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(6)
+                    .padding(8)
             }
 
             if let progress = item.userData?.playedPercentage, progress > 0 {

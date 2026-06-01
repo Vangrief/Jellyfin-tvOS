@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct SettingsHomeImageTypeScreen: View {
-    @EnvironmentObject var theme: MoonfinTheme
     @EnvironmentObject var container: AppContainer
     @EnvironmentObject var settingsRouter: SettingsRouter
     @FocusState private var focusedRoute: SettingsRoute?
@@ -9,11 +8,11 @@ struct SettingsHomeImageTypeScreen: View {
     private var prefs: UserPreferences { container.userPreferences }
 
     var body: some View {
-        SettingsScreenLayout(title: "Image Type") {
+        SettingsScreenLayout(title: Strings.settingsImageType) {
             SettingsListButton(
                 icon: "play.rectangle",
-                heading: "Continue Watching",
-                caption: "Image type for continue watching rows",
+                heading: Strings.settingsHomeImageTypeScreenContinueWatching,
+                caption: Strings.settingsHomeImageTypeScreenContinueWatchingCaption,
                 trailingText: prefs[UserPreferences.homeImageTypeContinueWatching].displayName,
                 action: { settingsRouter.navigate(to: .homeImageTypeContinueWatching) }
             )
@@ -21,8 +20,8 @@ struct SettingsHomeImageTypeScreen: View {
 
             SettingsListButton(
                 icon: "sparkles.rectangle.stack",
-                heading: "Next Up",
-                caption: "Image type for next up rows",
+                heading: Strings.settingsHomeImageTypeScreenNextUp,
+                caption: Strings.settingsHomeImageTypeScreenNextUpCaption,
                 trailingText: prefs[UserPreferences.homeImageTypeNextUp].displayName,
                 action: { settingsRouter.navigate(to: .homeImageTypeNextUp) }
             )
@@ -30,8 +29,8 @@ struct SettingsHomeImageTypeScreen: View {
 
             SettingsListButton(
                 icon: "rectangle.grid.1x2",
-                heading: "My Media",
-                caption: "Image type for my media row",
+                heading: Strings.settingsHomeImageTypeScreenMyMedia,
+                caption: Strings.settingsHomeImageTypeScreenMyMediaCaption,
                 trailingText: prefs[UserPreferences.homeImageTypeMyMedia].displayName,
                 action: { settingsRouter.navigate(to: .homeImageTypeMyMedia) }
             )
@@ -39,8 +38,8 @@ struct SettingsHomeImageTypeScreen: View {
 
             SettingsListButton(
                 icon: "rectangle.stack",
-                heading: "Libraries",
-                caption: "Image type for library rows",
+                heading: Strings.libraries,
+                caption: Strings.settingsHomeImageTypeScreenLibrariesCaption,
                 trailingText: prefs[UserPreferences.homeImageTypeLibraries].displayName,
                 action: { settingsRouter.navigate(to: .homeImageTypeLibraries) }
             )
@@ -48,23 +47,12 @@ struct SettingsHomeImageTypeScreen: View {
 
             SettingsListButton(
                 icon: "tv",
-                heading: "Live TV",
-                caption: "Image type for live TV rows",
+                heading: Strings.liveTv,
+                caption: Strings.settingsHomeImageTypeScreenLiveTvCaption,
                 trailingText: prefs[UserPreferences.homeImageTypeLiveTv].displayName,
                 action: { settingsRouter.navigate(to: .homeImageTypeLiveTv) }
             )
             .focused($focusedRoute, equals: .homeImageTypeLiveTv)
-
-            Divider()
-                .background(theme.colorScheme.listCaption.opacity(0.3))
-                .padding(.vertical, SpaceTokens.spaceXs)
-
-            SettingsToggleButton(
-                icon: "tv.and.mediabox",
-                heading: "Use Series Image",
-                caption: "Show series poster instead of episode image",
-                isOn: prefs.binding(for: UserPreferences.homeImageUseSeriesImage)
-            )
         }
         .restoresFocus($focusedRoute)
     }

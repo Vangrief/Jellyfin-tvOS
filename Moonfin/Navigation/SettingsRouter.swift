@@ -3,6 +3,33 @@ import SwiftUI
 enum SettingsRoute: Hashable {
     case main
 
+    case accountAndSecurity
+
+    case personalization
+    case personalizationGeneralStyle
+    case personalizationNavigation
+
+    case dynamicContent
+    case dynamicContentMediaBar
+    case dynamicContentLocalPreviews
+    case dynamicContentSeasonalEffects
+    case dynamicContentMediaBarSourceLibraries
+    case dynamicContentMediaBarSourceCollections
+    case dynamicContentMediaBarExcludedGenres
+
+    case playbackAndSyncPlay
+    case playbackSubtitles
+    case playbackVideoPreferences
+    case playbackAudioPreferences
+    case playbackAutomationQueue
+
+    case integrations
+    case integrationsHomeScreenSections
+    case integrationsMetadataRatings
+    case integrationsRatingSources
+
+    case placeholder(title: String)
+
     case authentication
     case authenticationServer(serverId: String)
     case authenticationServerUser(serverId: String, userId: String)
@@ -11,10 +38,13 @@ enum SettingsRoute: Hashable {
     case authenticationPinCode
 
     case customization
-    case customizationTheme
+    case customizationAppearanceTheme
+    case customizationSavedThemes
+    case customizationFocusBorder
     case customizationClock
     case customizationWatchedIndicator
     case customizationSubtitles
+    case customizationDefaultSubtitleLanguage
     case customizationSubtitlesTextColor
     case customizationSubtitlesBackgroundColor
     case customizationSubtitlesEdgeColor
@@ -28,9 +58,14 @@ enum SettingsRoute: Hashable {
     case customizationScreensaverDimming
 
     case home
-    case homeSection(index: Int)
+    case homeSections
     case homePosterSize
+    case homeRowsStyle
     case homeRowsImageType
+    case homeFavoritesSortBy
+    case homeCollectionsSortBy
+    case homeGenresSortBy
+    case homeGenresItems
     case homeImageTypeContinueWatching
     case homeImageTypeNextUp
     case homeImageTypeMyMedia
@@ -38,6 +73,7 @@ enum SettingsRoute: Hashable {
     case homeImageTypeLiveTv
 
     case libraries
+    case librariesVisibility
     case librariesDisplay(itemId: String, displayPreferencesId: String, serverId: String, userId: String)
     case librariesDisplayImageSize(itemId: String, displayPreferencesId: String, serverId: String, userId: String)
     case librariesDisplayImageType(itemId: String, displayPreferencesId: String, serverId: String, userId: String)
@@ -62,7 +98,10 @@ enum SettingsRoute: Hashable {
     case playbackVideoStartDelay
     case playbackMaxBitrate
     case playbackMaxResolution
+    case playbackQualityProfile
     case playbackRefreshRateSwitching
+    case playbackSkipBackLength
+    case playbackDefaultAudioLanguage
     case playbackZoomMode
     case playbackAudioBehavior
     case playbackAudioOutput
@@ -73,10 +112,15 @@ enum SettingsRoute: Hashable {
     case seerrFetchLimit
 
     case plugin
+    case pluginCustomizationProfile
     case moonfinNavbarPosition
+    case moonfinNavbarColor
+    case moonfinNavbarOpacity
     case moonfinShuffleContentType
     case moonfinMediaBarContentType
     case moonfinMediaBarItemCount
+    case moonfinMediaBarMode
+    case moonfinMediaBarInterval
     case moonfinMediaBarOpacity
     case moonfinMediaBarColor
     case moonfinThemeMusicVolume
@@ -84,11 +128,6 @@ enum SettingsRoute: Hashable {
     case moonfinDetailsBlur
     case moonfinBrowsingBlur
     case moonfinParentalControls
-    case pluginToolbar
-    case pluginMediaBar
-    case pluginBackgrounds
-    case pluginPreviewsMusic
-    case pluginIntegrations
     case moonfinSyncPlay
     case moonfinSyncPlayMinDelay
     case moonfinSyncPlayMaxDelay
@@ -147,16 +186,24 @@ struct SettingsFocusRestorationModifier: ViewModifier {
     @EnvironmentObject var settingsRouter: SettingsRouter
     var focusedRoute: FocusState<SettingsRoute?>.Binding
 
+    private func applyFocus(_ route: SettingsRoute) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            focusedRoute.wrappedValue = nil
+            focusedRoute.wrappedValue = route
+        }
+    }
+
     func body(content: Content) -> some View {
         content.onAppear {
             guard let route = settingsRouter.lastPoppedRoute else { return }
             settingsRouter.lastPoppedRoute = nil
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                var transaction = Transaction()
-                transaction.disablesAnimations = true
-                withTransaction(transaction) {
-                    focusedRoute.wrappedValue = route
-                }
+            DispatchQueue.main.async {
+                applyFocus(route)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                applyFocus(route)
             }
         }
     }

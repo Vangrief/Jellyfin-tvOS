@@ -17,7 +17,7 @@ struct SettingsAuthServerScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Server") {
+        SettingsScreenLayout(title: Strings.settingsAuthServerScreenServer) {
             if let server {
                 serverHeader(server)
 
@@ -26,7 +26,7 @@ struct SettingsAuthServerScreen: View {
                     .padding(.vertical, SpaceTokens.spaceXs)
 
                 if !users.isEmpty {
-                    Text("Accounts")
+                    Text(Strings.settingsAuthServerScreenAccounts)
                         .font(.bodyLg)
                         .fontWeight(.semibold)
                         .foregroundColor(theme.colorScheme.onBackground)
@@ -42,17 +42,17 @@ struct SettingsAuthServerScreen: View {
                     .padding(.vertical, SpaceTokens.spaceXs)
 
                 Button(action: { showDeleteAlert = true }) {
-                    FocusAwareActionLabel(icon: "trash", text: "Remove Server", color: .red)
+                    FocusAwareActionLabel(icon: "trash", text: Strings.settingsAuthServerScreenRemoveServer, color: .red)
                 }
                 .buttonStyle(CleanButtonStyle())
-                .alert("Remove Server", isPresented: $showDeleteAlert) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Remove", role: .destructive) {
+                .alert(Strings.settingsAuthServerScreenRemoveServer, isPresented: $showDeleteAlert) {
+                    Button(Strings.cancel, role: .cancel) {}
+                    Button(Strings.remove, role: .destructive) {
                         _ = container.serverRepository.deleteServer(id: server.id)
                         settingsRouter.goBack()
                     }
                 } message: {
-                    Text("This will remove \"\(server.name)\" and all stored accounts.")
+                    Text(Strings.settingsAuthServerScreenRemoveConfirm(server.name))
                 }
             }
         }
@@ -113,7 +113,7 @@ private struct UserRowLabel: View {
                     .foregroundColor(isFocused ? theme.colorScheme.listHeadlineFocused : theme.colorScheme.listHeadline)
 
                 if let lastUsed = user.lastUsed {
-                    Text("Last used \(lastUsed, style: .relative) ago")
+                    Text(Strings.lastUsedAgo(lastUsed.formatted(.relative(presentation: .named))))
                         .font(.captionXs)
                         .foregroundColor(isFocused ? theme.colorScheme.listCaptionFocused : theme.colorScheme.listCaption)
                 }

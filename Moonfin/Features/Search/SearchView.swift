@@ -87,17 +87,15 @@ struct SearchScreen: View {
                     .lineLimit(1)
 
                 SimpleInfoRow(item: item)
-                    .scaleEffect(1.15, anchor: .leading)
                     .padding(.bottom, 4)
 
                 MediaBarRatingsRow(
                     ratings: ratingsViewModel.ratings,
                     enableAdditionalRatings: ratingsViewModel.enableAdditionalRatings
                 )
-                .scaleEffect(1.3, anchor: .leading)
             }
         }
-        .frame(height: 130, alignment: .leading)
+        .frame(height: 170, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: viewModel.focusedItem?.id) { _ in
             if let item = viewModel.focusedItem {
@@ -424,7 +422,7 @@ private struct SearchTextField: View {
                 .font(.system(size: 26, weight: .medium))
                 .foregroundColor(isFocused ? theme.colorScheme.onInputFocused : .white.opacity(0.4))
 
-            TextField("Search movies, shows, music...", text: $text)
+            TextField(Strings.searchViewPlaceholder, text: $text)
                 .font(.system(size: 28, weight: .regular))
                 .foregroundColor(isFocused ? theme.colorScheme.onInputFocused : theme.colorScheme.onInput)
                 .autocorrectionDisabled()
@@ -511,7 +509,7 @@ private struct SeerrSearchCard: View {
                 .foregroundColor(.white)
                 .lineLimit(1)
 
-            Text(item.mediaType == "tv" ? "TV Show" : "Movie")
+            Text(item.mediaType == "tv" ? Strings.searchViewTvShow : Strings.seerrMovie)
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.6))
                 .lineLimit(1)

@@ -1,13 +1,15 @@
 import Foundation
 import SwiftUI
+import Combine
 import Darwin
 
 private func userPreferencesLocalized(_ key: String) -> String {
     Bundle.main.localizedString(forKey: key, value: nil, table: nil)
 }
 
-final class UserPreferences {
+final class UserPreferences: ObservableObject {
     private var store: PreferenceStore
+    let objectWillChange = ObservableObjectPublisher()
 
     static let maxBitrate = Preference(key: "playback_max_bitrate", defaultValue: 0)
     static let maxResolution = Preference(key: "playback_max_resolution", defaultValue: "")
@@ -20,18 +22,28 @@ final class UserPreferences {
     static let unpauseRewindDuration = Preference(key: "playback_unpause_rewind", defaultValue: 0)
     static let showDescriptionOnPause = Preference(key: "playback_show_description_pause", defaultValue: false)
     static let maxVideoResolution = Preference(key: "playback_max_resolution_enum", defaultValue: MaxVideoResolution.auto)
+    static let playbackQualityProfile = Preference(key: "playback_quality_profile", defaultValue: PlaybackQualityProfile.auto)
     static let playerZoomMode = Preference(key: "playback_zoom_mode", defaultValue: ZoomMode.fit)
     static let audioNightMode = Preference(key: "playback_audio_night_mode", defaultValue: false)
     static let liveTvDirectPlay = Preference(key: "playback_livetv_direct_play", defaultValue: true)
     static let videoStartDelay = Preference(key: "playback_video_start_delay", defaultValue: 0)
     static let cinemaModeEnabled = Preference(key: "cinema_mode_enabled", defaultValue: true)
     static let nativeDvDecodeEnabled = Preference(key: "native_dv_decode_enabled", defaultValue: true)
+    static let hardwareDecoding = Preference(key: "hardware_decoding", defaultValue: true)
+    static let refreshRateSwitchingBehavior = Preference(
+        key: "refresh_rate_switching_behavior",
+        defaultValue: RefreshRateSwitchingBehavior.disabled
+    )
+    static let skipBackLength = Preference(key: "playback_skip_back", defaultValue: 10)
 
     static let navbarPosition = Preference(key: "navbar_position", defaultValue: NavbarPosition.top)
+    static let navbarColor = Preference(key: "navbar_color", defaultValue: MediaBarOverlayColor.gray)
+    static let navbarOpacity = Preference(key: "navbar_opacity", defaultValue: 100)
     static let shuffleContentType = Preference(key: "shuffle_content_type", defaultValue: ShuffleContentType.both)
 
     static let homeSections = Preference(key: "home_active_sections", defaultValue: "")
     static let homePosterSize = Preference(key: "home_poster_size", defaultValue: PosterSize.medium)
+    static let homeRowsImageTypeOverride = Preference(key: "home_rows_image_type_override", defaultValue: false)
     static let homeRowsImageType = Preference(key: "home_rows_image_type", defaultValue: ImageDisplayType.poster)
     static let homeImageTypeContinueWatching = Preference(key: "home_image_type_continue_watching", defaultValue: ImageDisplayType.thumb)
     static let homeImageTypeNextUp = Preference(key: "home_image_type_next_up", defaultValue: ImageDisplayType.thumb)
@@ -39,6 +51,15 @@ final class UserPreferences {
     static let homeImageTypeLibraries = Preference(key: "home_image_type_libraries", defaultValue: ImageDisplayType.poster)
     static let homeImageTypeLiveTv = Preference(key: "home_image_type_live_tv", defaultValue: ImageDisplayType.thumb)
     static let homeImageUseSeriesImage = Preference(key: "home_image_use_series_image", defaultValue: false)
+    static let displayFavoritesRows = Preference(key: "display_favorites_rows", defaultValue: true)
+    static let favoritesRowSortBy = Preference(key: "favorites_row_sort_by", defaultValue: HomeRowSortBy.name)
+    static let displayCollectionsRows = Preference(key: "display_collections_rows", defaultValue: true)
+    static let collectionsRowSortBy = Preference(key: "collections_row_sort_by", defaultValue: HomeRowSortBy.name)
+    static let displayGenresRows = Preference(key: "display_genres_rows", defaultValue: true)
+    static let genresRowSortBy = Preference(key: "genres_row_sort_by", defaultValue: HomeRowSortBy.name)
+    static let genresRowItems = Preference(key: "genres_row_items", defaultValue: GenresRowItems.both)
+    static let homeRowInfoOverlay = Preference(key: "home_row_info_overlay", defaultValue: true)
+    static let homeRowsStyle = Preference(key: "home_rows_style", defaultValue: HomeRowsStyle.v2)
 
     static let screensaverEnabled = Preference(key: "screensaver_enabled", defaultValue: true)
     static let screensaverTimeout = Preference(key: "screensaver_timeout", defaultValue: 5)
@@ -62,8 +83,14 @@ final class UserPreferences {
     static let mediaBarExcludedGenres = Preference(key: "media_bar_excluded_genres", defaultValue: [String]())
 
     static let enableAdditionalRatings = Preference(key: "enable_additional_ratings", defaultValue: false)
+    static let tmdbApiKey = Preference(key: "tmdb_api_key", defaultValue: "")
     static let enableEpisodeRatings = Preference(key: "enable_episode_ratings", defaultValue: false)
     static let showRatingLabels = Preference(key: "show_rating_labels", defaultValue: true)
+    static let showRatingBadges = Preference(key: "show_rating_badges", defaultValue: true)
+    static let enabledRatings = Preference(
+        key: "enabled_ratings",
+        defaultValue: SettingsRatingSource.defaultOrder.map(\.rawValue)
+    )
 
     static let backdropEnabled = Preference(key: "backdrop_enabled", defaultValue: true)
     static let detailsBackgroundBlur = Preference(key: "details_background_blur", defaultValue: 10)
@@ -77,6 +104,9 @@ final class UserPreferences {
     static let enableFolderView = Preference(key: "enable_folder_view", defaultValue: false)
     static let mediaBarTrailerPreview = Preference(key: "media_bar_trailer_preview", defaultValue: true)
     static let mediaBarTrailerAudio = Preference(key: "media_bar_trailer_audio", defaultValue: true)
+    static let mediaBarMode = Preference(key: "media_bar_mode", defaultValue: MediaBarMode.moonfin)
+    static let mediaBarAutoAdvance = Preference(key: "media_bar_auto_advance", defaultValue: true)
+    static let mediaBarIntervalMs = Preference(key: "media_bar_interval_ms", defaultValue: 10_000)
     static let mediaPreviewEnabled = Preference(key: "episode_preview_enabled", defaultValue: true)
     static let previewAudioEnabled = Preference(key: "preview_audio_enabled", defaultValue: true)
 
@@ -84,6 +114,13 @@ final class UserPreferences {
 
     static let pluginSyncEnabled = Preference(key: "plugin_sync_enabled", defaultValue: false)
     static let pluginSyncAutoDetected = Preference(key: "plugin_sync_auto_detected", defaultValue: false)
+    static let pluginCustomizationProfile = Preference(
+        key: "plugin_customization_profile",
+        defaultValue: PluginCustomizationProfile.tv
+    )
+
+    static let visualTheme = Preference(key: "visual_theme", defaultValue: VisualThemeId.moonfin)
+    static let customThemeId = Preference(key: "pref_custom_theme_id", defaultValue: "")
 
     static let themeMusicEnabled = Preference(key: "theme_music_enabled", defaultValue: false)
     static let themeMusicVolume = Preference(key: "theme_music_volume", defaultValue: 30)
@@ -97,9 +134,19 @@ final class UserPreferences {
     static let subtitlesTextSize = Preference(key: "subtitles_text_size", defaultValue: 24)
     static let subtitlesOffsetPosition = Preference(key: "subtitles_offset_position", defaultValue: 8)
     static let subtitlesDefaultToNone = Preference(key: "subtitles_default_to_none", defaultValue: false)
+    static let defaultSubtitleLanguage = Preference(
+        key: "default_subtitle_language",
+        defaultValue: DefaultSubtitleLanguage.none
+    )
+    static let pgsDirectPlay = Preference(key: "subtitles_pgs_direct_play", defaultValue: true)
+    static let assDirectPlay = Preference(key: "subtitles_ass_direct_play", defaultValue: true)
     static let subtitlesOverrideASSStyles = Preference(key: "subtitles_override_ass_styles", defaultValue: false)
+    static let defaultAudioLanguage = Preference(key: "default_audio_language", defaultValue: DefaultAudioLanguage.auto)
+    static let ac3Enabled = Preference(key: "audio_ac3_enabled", defaultValue: false)
+    static let trueHdEnabled = Preference(key: "audio_truehd_enabled", defaultValue: false)
 
     static let stillWatchingThreshold = Preference(key: "still_watching_threshold", defaultValue: 3)
+    static let mediaQueuingEnabled = Preference(key: "media_queuing_enabled", defaultValue: true)
 
     static let mediaSegmentActions = Preference(
         key: "media_segment_actions",
@@ -138,6 +185,12 @@ final class UserPreferences {
 
     static let userPinEnabled = Preference(key: "user_pin_enabled", defaultValue: false)
     static let userPinHash = Preference(key: "user_pin_hash", defaultValue: "")
+    static let confirmExit = Preference(key: "confirm_exit", defaultValue: true)
+    static let use24HourClock = Preference(key: "use_24_hour_clock", defaultValue: false)
+    static let focusColor = Preference(key: "focus_color", defaultValue: "")
+    static let cardFocusExpansion = Preference(key: "card_focus_expansion", defaultValue: true)
+    static let preferSystemImeKeyboard = Preference(key: "prefer_system_ime_keyboard", defaultValue: false)
+    static let showSyncPlayButton = Preference(key: "show_syncplay_button", defaultValue: true)
 
     static let showShuffleButton = Preference(key: "navbar_show_shuffle", defaultValue: true)
     static let showGenresButton = Preference(key: "navbar_show_genres", defaultValue: true)
@@ -150,7 +203,41 @@ final class UserPreferences {
 
     subscript<T>(preference: Preference<T>) -> T {
         get { store[preference] }
-        set { store[preference] = newValue }
+        set {
+            objectWillChange.send()
+            store[preference] = newValue
+        }
+    }
+
+    var homeSectionsConfig: [HomeSectionConfig] {
+        let raw = store[Self.homeSections]
+
+        if let decoded = HomeSectionConfig.decodeJsonString(raw) {
+            return decoded
+        }
+
+        let migrated = HomeSectionConfig.fromLegacyCsv(raw)
+        objectWillChange.send()
+        store[Self.homeSections] = HomeSectionConfig.toStorageString(migrated)
+        return migrated
+    }
+
+    func setHomeSectionsConfig(_ configs: [HomeSectionConfig]) {
+        objectWillChange.send()
+        store[Self.homeSections] = HomeSectionConfig.toStorageString(configs)
+    }
+
+    var activeHomeSections: [HomeSectionType] {
+        homeSectionsConfig
+            .filter { $0.isBuiltin && $0.enabled && $0.type != .none }
+            .sorted { $0.order < $1.order }
+            .map(\.type)
+    }
+
+    var activeHomeSectionConfigs: [HomeSectionConfig] {
+        homeSectionsConfig
+            .filter { $0.enabled && ($0.isPluginDynamic || $0.type != .none) }
+            .sorted { $0.order < $1.order }
     }
 }
 
@@ -182,11 +269,18 @@ enum AudioBehavior: String, StringRepresentableEnum, CaseIterable {
 
 enum AudioOutput: String, StringRepresentableEnum, CaseIterable {
     case directStream
+    case passthroughAtmos
     case downmixToStereo
 
     var displayName: String {
         switch self {
         case .directStream: return userPreferencesLocalized("direct_stream")
+        case .passthroughAtmos:
+            return Bundle.main.localizedString(
+                forKey: "passthrough_atmos",
+                value: "Passthrough (Dolby Atmos)",
+                table: nil
+            )
         case .downmixToStereo: return userPreferencesLocalized("downmix_to_stereo")
         }
     }
@@ -226,6 +320,251 @@ enum ShuffleContentType: String, StringRepresentableEnum, CaseIterable {
     }
 }
 
+enum HomeRowSortBy: String, StringRepresentableEnum, CaseIterable {
+    case name
+    case dateAdded
+    case premiereDate
+    case rating
+    case runtime
+    case random
+    case criticRating
+    case communityRating
+
+    var displayName: String {
+        switch self {
+        case .name: return userPreferencesLocalized("lbl_name")
+        case .dateAdded: return userPreferencesLocalized("lbl_date_added")
+        case .premiereDate: return userPreferencesLocalized("lbl_premier_date")
+        case .rating: return userPreferencesLocalized("lbl_rating")
+        case .runtime: return userPreferencesLocalized("lbl_runtime")
+        case .random: return userPreferencesLocalized("random")
+        case .criticRating: return userPreferencesLocalized("lbl_critic_rating")
+        case .communityRating: return userPreferencesLocalized("lbl_community_rating")
+        }
+    }
+}
+
+enum GenresRowItems: String, StringRepresentableEnum, CaseIterable {
+    case movies
+    case series
+    case both
+
+    var displayName: String {
+        switch self {
+        case .movies: return userPreferencesLocalized("lbl_movies")
+        case .series: return userPreferencesLocalized("lbl_tv_series")
+        case .both: return userPreferencesLocalized("both")
+        }
+    }
+}
+
+enum HomeRowsStyle: String, StringRepresentableEnum, CaseIterable {
+    case v1
+    case v2
+
+    var displayName: String {
+        switch self {
+        case .v1: return userPreferencesLocalized("userpreferences_home_rows_style_classic")
+        case .v2: return userPreferencesLocalized("userpreferences_home_rows_style_modern")
+        }
+    }
+}
+
+enum MediaBarMode: String, StringRepresentableEnum, CaseIterable {
+    case moonfin
+    case makd
+    case off
+
+    var displayName: String {
+        switch self {
+        case .moonfin: return "Moonfin"
+        case .makd: return "MakD"
+        case .off: return "Off"
+        }
+    }
+}
+
+enum RefreshRateSwitchingBehavior: String, StringRepresentableEnum, CaseIterable {
+    case disabled
+    case scaleOnTv
+    case scaleOnDevice
+
+    var displayName: String {
+        switch self {
+        case .disabled: return userPreferencesLocalized("disabled")
+        case .scaleOnTv: return userPreferencesLocalized("pref_refresh_rate_scale_on_tv")
+        case .scaleOnDevice: return userPreferencesLocalized("pref_refresh_rate_scale_on_device")
+        }
+    }
+}
+
+enum DefaultAudioLanguage: String, StringRepresentableEnum, CaseIterable {
+    case auto
+    case eng
+    case spa
+    case fra
+    case deu
+    case ita
+    case por
+    case jpn
+    case kor
+    case zho
+    case rus
+    case ara
+    case hin
+    case nld
+    case swe
+    case nor
+    case dan
+    case fin
+    case pol
+
+    var displayName: String {
+        switch self {
+        case .auto: return "Auto"
+        case .eng: return "English"
+        case .spa: return "Spanish"
+        case .fra: return "French"
+        case .deu: return "German"
+        case .ita: return "Italian"
+        case .por: return "Portuguese"
+        case .jpn: return "Japanese"
+        case .kor: return "Korean"
+        case .zho: return "Chinese"
+        case .rus: return "Russian"
+        case .ara: return "Arabic"
+        case .hin: return "Hindi"
+        case .nld: return "Dutch"
+        case .swe: return "Swedish"
+        case .nor: return "Norwegian"
+        case .dan: return "Danish"
+        case .fin: return "Finnish"
+        case .pol: return "Polish"
+        }
+    }
+}
+
+enum DefaultSubtitleLanguage: String, StringRepresentableEnum, CaseIterable {
+    case none
+    case eng
+    case spa
+    case fra
+    case deu
+    case ita
+    case por
+    case jpn
+    case kor
+    case zho
+    case rus
+    case ara
+    case hin
+    case nld
+    case swe
+    case nor
+    case dan
+    case fin
+    case pol
+
+    var displayName: String {
+        switch self {
+        case .none: return "None"
+        case .eng: return "English"
+        case .spa: return "Spanish"
+        case .fra: return "French"
+        case .deu: return "German"
+        case .ita: return "Italian"
+        case .por: return "Portuguese"
+        case .jpn: return "Japanese"
+        case .kor: return "Korean"
+        case .zho: return "Chinese"
+        case .rus: return "Russian"
+        case .ara: return "Arabic"
+        case .hin: return "Hindi"
+        case .nld: return "Dutch"
+        case .swe: return "Swedish"
+        case .nor: return "Norwegian"
+        case .dan: return "Danish"
+        case .fin: return "Finnish"
+        case .pol: return "Polish"
+        }
+    }
+}
+
+enum PluginCustomizationProfile: String, StringRepresentableEnum, CaseIterable {
+    case global
+    case desktop
+    case mobile
+    case tv
+
+    var displayName: String {
+        switch self {
+        case .global: return userPreferencesLocalized("userpreferences_plugin_profile_global")
+        case .desktop: return userPreferencesLocalized("userpreferences_plugin_profile_desktop")
+        case .mobile: return userPreferencesLocalized("userpreferences_plugin_profile_mobile")
+        case .tv: return userPreferencesLocalized("userpreferences_plugin_profile_tv")
+        }
+    }
+}
+
+enum VisualThemeId: String, StringRepresentableEnum, CaseIterable {
+    case moonfin
+    case neonPulse
+
+    var displayName: String {
+        switch self {
+        case .moonfin: return "Moonfin"
+        case .neonPulse: return "Neon Pulse"
+        }
+    }
+}
+
+enum SettingsRatingSource: String, CaseIterable {
+    case tomatoes
+    case tomatoesAudience = "tomatoes_audience"
+    case imdb
+    case tmdb
+    case metacritic
+    case metacriticUser = "metacriticuser"
+    case trakt
+    case letterboxd
+    case rogerebert
+    case myanimelist
+    case anilist
+    case stars
+
+    static let defaultOrder: [SettingsRatingSource] = [
+        .tomatoes,
+        .tomatoesAudience,
+        .imdb,
+        .tmdb,
+        .metacritic,
+        .metacriticUser,
+        .trakt,
+        .letterboxd,
+        .rogerebert,
+        .myanimelist,
+        .anilist,
+        .stars,
+    ]
+
+    var displayName: String {
+        switch self {
+        case .tomatoes: return "Rotten Tomatoes"
+        case .tomatoesAudience: return userPreferencesLocalized("userpreferences_rating_rt_audience")
+        case .imdb: return "IMDb"
+        case .tmdb: return "TMDB"
+        case .metacritic: return "Metacritic"
+        case .metacriticUser: return "Metacritic User"
+        case .trakt: return "Trakt"
+        case .letterboxd: return "Letterboxd"
+        case .rogerebert: return "Roger Ebert"
+        case .myanimelist: return "MyAnimeList"
+        case .anilist: return "AniList"
+        case .stars: return userPreferencesLocalized("lbl_community_rating")
+        }
+    }
+}
+
 enum PosterSize: String, StringRepresentableEnum, CaseIterable {
     case smallest
     case small
@@ -239,7 +578,7 @@ enum PosterSize: String, StringRepresentableEnum, CaseIterable {
         case .small: return userPreferencesLocalized("poster_size_small")
         case .medium: return userPreferencesLocalized("poster_size_medium")
         case .large: return userPreferencesLocalized("poster_size_large")
-        case .xLarge: return userPreferencesLocalized("poster_size_xlarge")
+        case .xLarge: return userPreferencesLocalized("poster_size_x_large")
         }
     }
 
@@ -435,6 +774,41 @@ enum MaxVideoResolution: String, StringRepresentableEnum, CaseIterable {
         case .res1080p: return "1080p"
         case .res2160p: return "4K"
         }
+    }
+}
+
+enum PlaybackQualityProfile: String, StringRepresentableEnum, CaseIterable {
+    case auto
+    case compatibility
+    case highQuality
+
+    var displayName: String {
+        switch self {
+        case .auto: return userPreferencesLocalized("option_auto")
+        case .compatibility: return userPreferencesLocalized("userpreferences_quality_compatibility")
+        case .highQuality: return userPreferencesLocalized("userpreferences_quality_high")
+        }
+    }
+
+    static func recommended(for generation: VideoCapabilityDetector.AppleTVGeneration) -> PlaybackQualityProfile {
+        switch generation {
+        case .k4Gen3:
+            return .highQuality
+        case .hd, .k4Gen1, .k4Gen2, .unknown:
+            return .compatibility
+        }
+    }
+
+    static func autoSummaryDisplayName(for generation: VideoCapabilityDetector.AppleTVGeneration) -> String {
+        let recommendedProfile = recommended(for: generation)
+        return String(format: userPreferencesLocalized("userpreferences_quality_auto_recommended"), recommendedProfile.displayName)
+    }
+
+    func pickerDisplayName(for generation: VideoCapabilityDetector.AppleTVGeneration) -> String {
+        if self == PlaybackQualityProfile.recommended(for: generation) {
+            return String(format: userPreferencesLocalized("userpreferences_quality_picker_recommended"), displayName)
+        }
+        return displayName
     }
 }
 

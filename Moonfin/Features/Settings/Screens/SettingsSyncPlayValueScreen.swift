@@ -7,7 +7,6 @@ struct SettingsSyncPlayValueScreen: View {
     let suffix: String
 
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var settingsRouter: SettingsRouter
     @EnvironmentObject var theme: MoonfinTheme
 
     private var currentValue: Int {
@@ -26,7 +25,6 @@ struct SettingsSyncPlayValueScreen: View {
             ForEach(options, id: \.self) { value in
                 Button {
                     container.userPreferences[preference] = value
-                    settingsRouter.goBack()
                 } label: {
                     SyncPlayValueOptionContent(
                         text: "\(value)\(suffix)",

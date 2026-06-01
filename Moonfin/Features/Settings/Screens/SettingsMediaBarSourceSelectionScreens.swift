@@ -1,0 +1,265 @@
+import SwiftUI
+
+private struct SourceChoice: Identifiable, Hashable {
+    let id: String
+    let name: String
+}
+
+struct SettingsMediaBarLibrariesSelectionScreen: View {
+    @EnvironmentObject var container: AppContainer
+
+    @State private var choices: [SourceChoice] = []
+    @State private var selectedIds = Set<String>()
+    @State private var isLoading = true
+
+    private var prefs: UserPreferences { container.userPreferences }
+
+    var body: some View {
+        SettingsScreenLayout(title: Strings.settingsMediaBarSourceSelectionScreensSourceLibraries) {
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SpaceTokens.spaceLg)
+            } else if choices.isEmpty {
+                Text(Strings.settingsLibraryVisibilityNoLibraries)
+                    .font(.bodyMd)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SpaceTokens.spaceMd)
+            } else {
+                ForEach(choices) { choice in
+                    SourceMultiSelectRow(
+                        label: choice.name,
+                        selected: selectedIds.contains(normalized(choice.id))
+                    ) {
+                        toggle(choice.id)
+                    }
+                }
+            }
+        }
+        .task { await loadChoices() }
+    }
+
+    @MainActor
+    private func loadChoices() async {
+        isLoading = true
+        selectedIds = Set(prefs[UserPreferences.mediaBarLibraryIds].map(normalized))
+
+        let views = await container.userViewsService.awaitLoaded()
+        choices = views.map { SourceChoice(id: $0.id, name: $0.name) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+
+        isLoading = false
+    }
+
+    private func toggle(_ id: String) {
+        let normalizedId = normalized(id)
+        if selectedIds.contains(normalizedId) {
+            selectedIds.remove(normalizedId)
+        } else {
+            selectedIds.insert(normalizedId)
+        }
+        prefs[UserPreferences.mediaBarLibraryIds] = Array(selectedIds).sorted()
+    }
+
+    private func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
+struct SettingsMediaBarCollectionsSelectionScreen: View {
+    @EnvironmentObject var container: AppContainer
+
+    @State private var choices: [SourceChoice] = []
+    @State private var selectedIds = Set<String>()
+    @State private var isLoading = true
+
+    private var prefs: UserPreferences { container.userPreferences }
+
+    var body: some View {
+        SettingsScreenLayout(title: Strings.settingsMediaBarSourceSelectionScreensSourceCollections) {
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SpaceTokens.spaceLg)
+            } else if choices.isEmpty {
+                Text(Strings.settingsMediaBarSourceSelectionScreensNoCollections)
+                    .font(.bodyMd)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SpaceTokens.spaceMd)
+            } else {
+                ForEach(choices) { choice in
+                    SourceMultiSelectRow(
+                        label: choice.name,
+                        selected: selectedIds.contains(normalized(choice.id))
+                    ) {
+                        toggle(choice.id)
+                    }
+                }
+            }
+        }
+        .task { await loadChoices() }
+    }
+
+    @MainActor
+    private func loadChoices() async {
+        isLoading = true
+        selectedIds = Set(prefs[UserPreferences.mediaBarCollectionIds].map(normalized))
+
+        guard let session = container.sessionRepository.currentSession.value,
+              let server = container.serverRepository.currentServer.value else {
+            choices = []
+            isLoading = false
+            return
+        }
+
+        do {
+            let client = container.serverClientFactory.client(for: server)
+            let result = try await client.itemsApi.getItems(request: GetItemsRequest(
+                userId: session.userId.uuidString,
+                recursive: true,
+                includeItemTypes: [.boxSet],
+                sortBy: [.sortName],
+                sortOrder: .ascending,
+                limit: 500
+            ))
+
+            choices = result.items
+                .map { SourceChoice(id: $0.id, name: $0.name) }
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        } catch {
+            choices = []
+        }
+
+        isLoading = false
+    }
+
+    private func toggle(_ id: String) {
+        let normalizedId = normalized(id)
+        if selectedIds.contains(normalizedId) {
+            selectedIds.remove(normalizedId)
+        } else {
+            selectedIds.insert(normalizedId)
+        }
+        prefs[UserPreferences.mediaBarCollectionIds] = Array(selectedIds).sorted()
+    }
+
+    private func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
+struct SettingsMediaBarExcludedGenresSelectionScreen: View {
+    @EnvironmentObject var container: AppContainer
+
+    @State private var choices: [SourceChoice] = []
+    @State private var selectedNames = Set<String>()
+    @State private var isLoading = true
+
+    private var prefs: UserPreferences { container.userPreferences }
+
+    var body: some View {
+        SettingsScreenLayout(title: Strings.settingsMediaBarSourceSelectionScreensExcludedGenres) {
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SpaceTokens.spaceLg)
+            } else if choices.isEmpty {
+                Text(Strings.settingsMediaBarSourceSelectionScreensNoGenres)
+                    .font(.bodyMd)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, SpaceTokens.spaceMd)
+            } else {
+                ForEach(choices) { choice in
+                    SourceMultiSelectRow(
+                        label: choice.name,
+                        selected: selectedNames.contains(normalized(choice.name))
+                    ) {
+                        toggle(choice.name)
+                    }
+                }
+            }
+        }
+        .task { await loadChoices() }
+    }
+
+    @MainActor
+    private func loadChoices() async {
+        isLoading = true
+        selectedNames = Set(prefs[UserPreferences.mediaBarExcludedGenres].map(normalized))
+
+        guard let session = container.sessionRepository.currentSession.value,
+              let server = container.serverRepository.currentServer.value else {
+            choices = []
+            isLoading = false
+            return
+        }
+
+        do {
+            let client = container.serverClientFactory.client(for: server)
+            let result = try await client.itemsApi.getItems(request: GetItemsRequest(
+                userId: session.userId.uuidString,
+                recursive: true,
+                includeItemTypes: [.movie, .series],
+                fields: [.genres],
+                limit: 500
+            ))
+
+            let genres = Set(result.items.flatMap { $0.genres ?? [] })
+            choices = genres
+                .map { SourceChoice(id: $0.lowercased(), name: $0) }
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        } catch {
+            choices = []
+        }
+
+        isLoading = false
+    }
+
+    private func toggle(_ name: String) {
+        let normalizedName = normalized(name)
+        if selectedNames.contains(normalizedName) {
+            selectedNames.remove(normalizedName)
+        } else {
+            selectedNames.insert(normalizedName)
+        }
+        prefs[UserPreferences.mediaBarExcludedGenres] = Array(selectedNames).sorted()
+    }
+
+    private func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
+private struct SourceMultiSelectRow: View {
+    let label: String
+    let selected: Bool
+    let action: () -> Void
+
+    @EnvironmentObject var theme: MoonfinTheme
+    @Environment(\.isFocused) private var isFocused
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: SpaceTokens.spaceMd) {
+                Text(label)
+                    .font(.bodyMd)
+                    .foregroundColor(isFocused ? theme.colorScheme.listHeadlineFocused : theme.colorScheme.listHeadline)
+
+                Spacer()
+
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.bodyMd)
+                    .foregroundColor(selected
+                        ? (isFocused ? theme.colorScheme.listHeadlineFocused : theme.accent)
+                        : (isFocused ? theme.colorScheme.listCaptionFocused : theme.colorScheme.listCaption))
+            }
+            .padding(.horizontal, SpaceTokens.spaceMd)
+            .padding(.vertical, SpaceTokens.spaceSm)
+            .background(
+                RoundedRectangle(cornerRadius: RadiusTokens.small, style: .continuous)
+                    .fill(isFocused ? theme.colorScheme.listButtonFocused : theme.colorScheme.listButton)
+            )
+        }
+        .buttonStyle(CleanButtonStyle())
+    }
+}

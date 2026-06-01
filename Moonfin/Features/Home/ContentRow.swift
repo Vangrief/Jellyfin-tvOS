@@ -11,17 +11,51 @@ struct ContentRow: View {
     var onToggleWatched: ((ServerItem) -> Void)?
     var onToggleFavorite: ((ServerItem) -> Void)?
     var restoredItemId: String?
+    var preferredItemId: String?
     var focusTrigger: Int = 0
+    var transitionToken: Int = 0
+    var isRowFocused: Bool = false
     @EnvironmentObject var theme: MoonfinTheme
     @EnvironmentObject var container: AppContainer
+    @State private var v2FocusedItemId: String? = nil
+
+    private let v2ExtendedSectionHeight: CGFloat = 320
 
     private var posterSize: PosterSize {
         container.userPreferences[UserPreferences.homePosterSize]
     }
 
+    private var isV2Mode: Bool {
+        container.userPreferences[UserPreferences.homeRowsStyle] == .v2
+    }
+
+    private var isV2EligibleRow: Bool {
+        isV2Mode && isCustomizableRow && row.rowType != .myMediaSmall && !isMusicRow
+    }
+
+    private var v2CardHeight: CGFloat {
+        300 * posterSize.scaleFactor
+    }
+
+    private var v2PortraitWidth: CGFloat {
+        v2CardHeight * (2.0 / 3.0)
+    }
+
+    private var v2FocusedWidth: CGFloat {
+        v2CardHeight * (16.0 / 9.0)
+    }
+
+    private var v2FocusAnimation: Animation {
+        .easeInOut(duration: 0.2)
+    }
+
+    private var isFocusExpansionEnabled: Bool {
+        container.userPreferences[UserPreferences.cardFocusExpansion]
+    }
+
     private var imageDisplayType: ImageDisplayType {
         switch row.rowType {
-        case .continueWatching:
+        case .continueWatching, .resumeBook:
             return container.userPreferences[UserPreferences.homeImageTypeContinueWatching]
         case .nextUp:
             return container.userPreferences[UserPreferences.homeImageTypeNextUp]
@@ -61,11 +95,21 @@ struct ContentRow: View {
     }
 
     private var effectiveAspectRatio: CGFloat {
+        if isV2EligibleRow { return 2.0 / 3.0 }
         if isMusicRow { return 1.0 }
         return isCustomizableRow ? imageDisplayType.aspectRatio : row.rowType.aspectRatio
     }
 
     private var effectiveCardWidth: CGFloat {
+        if isV2EligibleRow {
+            return v2PortraitWidth
+        }
+
+        if effectiveAspectRatio >= 0.95 && effectiveAspectRatio <= 1.05 {
+            // Keep all square-like rows visually consistent and larger.
+            return 220 * posterSize.scaleFactor
+        }
+
         let base: CGFloat = isCustomizableRow
             ? resolvedImageDisplayType.aspectRatio >= 1.0 ? 280 : 150
             : row.rowType.cardWidth
@@ -78,10 +122,17 @@ struct ContentRow: View {
     }
 
     var body: some View {
-        if row.isLoading {
-            loadingRow
-        } else if !row.items.isEmpty {
-            itemRow
+        Group {
+            if row.isLoading {
+                loadingRow
+            } else if !row.items.isEmpty {
+                itemRow
+            }
+        }
+        .onChange(of: isRowFocused) { focused in
+            if !focused {
+                v2FocusedItemId = nil
+            }
         }
     }
 
@@ -115,9 +166,16 @@ struct ContentRow: View {
         VStack(alignment: .leading, spacing: SpaceTokens.spaceSm) {
             rowTitle
 
-            ScrollViewReader { scrollProxy in
-                FocusFirstRow(firstItemId: row.items.first?.id, restoredItemId: validRestoredItemId, focusTrigger: focusTrigger, applyFocusSection: false) { focusBinding in
-                    LazyHStack(spacing: SpaceTokens.spaceMd) {
+            ScrollViewReader { _ in
+                FocusFirstRow(
+                    firstItemId: row.items.first?.id,
+                    restoredItemId: validRestoredItemId,
+                    preferredItemId: preferredItemId,
+                    focusTrigger: focusTrigger,
+                    transitionToken: transitionToken,
+                    applyFocusSection: true
+                ) { focusBinding in
+                    LazyHStack(alignment: .top, spacing: SpaceTokens.spaceMd) {
                         ForEach(Array(row.items.enumerated()), id: \.element.id) { index, item in
                             cardView(for: item)
                                 .id(item.id)
@@ -127,13 +185,12 @@ struct ContentRow: View {
                                 }
                         }
                     }
-                    .padding(.vertical, 12)
+                    .padding(.vertical, isV2EligibleRow ? 20 : 12)
                     .padding(.horizontal, 12)
                 }
                 .modifier(ScrollClipDisabledModifier())
             }
         }
-        .focusSection()
     }
 
     @ViewBuilder
@@ -141,7 +198,7 @@ struct ContentRow: View {
         if row.rowType == .myMediaSmall {
             LibraryActionCard(
                 item: item,
-                cardWidth: row.rowType.cardWidth * posterSize.scaleFactor,
+                cardWidth: effectiveCardWidth,
                 onFocused: {
                     viewModel.onItemFocused(item)
                     onItemFocused?(item)
@@ -160,6 +217,8 @@ struct ContentRow: View {
                 },
                 onSelect: { onItemSelected?(item) }
             )
+        } else if isV2EligibleRow {
+            v2CardView(for: item)
         } else {
             ItemPreview(
                 item: item,
@@ -179,6 +238,65 @@ struct ContentRow: View {
                 onToggleFavorite: onToggleFavorite.map { cb in { cb(item) } }
             )
         }
+    }
+
+    private func v2CardView(for item: ServerItem) -> some View {
+        let isFocused = isRowFocused && v2FocusedItemId == item.id
+        let isExpanded = isFocused
+        let targetCardWidth = isExpanded ? v2FocusedWidth : v2PortraitWidth
+        let cardWidth = (targetCardWidth.isFinite && targetCardWidth > 1) ? targetCardWidth : max(1, v2PortraitWidth)
+        let aspectRatio: CGFloat = isExpanded ? (16.0 / 9.0) : (2.0 / 3.0)
+
+        return VStack(alignment: .leading, spacing: SpaceTokens.spaceXs) {
+            ItemPreview(
+                item: item,
+                imageUrl: v2ImageUrl(for: item, isExpanded: isExpanded),
+                aspectRatio: aspectRatio,
+                cardWidth: cardWidth,
+                watchedIndicator: watchedIndicator,
+                serverName: viewModel.serverName(for: item),
+                focusScale: 1.0,
+                showLabels: false,
+                onFocused: { focusedItem in
+                    viewModel.onItemFocused(focusedItem)
+                    onItemFocused?(focusedItem)
+                    onRowFocused?()
+                },
+                onFocusChange: { focused in
+                    if focused {
+                        v2FocusedItemId = item.id
+                    } else if v2FocusedItemId == item.id {
+                        v2FocusedItemId = nil
+                    }
+                },
+                onSelect: { onItemSelected?(item) },
+                onToggleWatched: onToggleWatched.map { cb in { cb(item) } },
+                onToggleFavorite: onToggleFavorite.map { cb in { cb(item) } }
+            )
+
+            HomeRowV2CardLabels(
+                item: item,
+                isFocused: isFocused,
+                width: cardWidth
+            )
+
+            HomeRowV2ExtendedSection(
+                item: item,
+                isVisible: isFocused,
+                width: cardWidth,
+                height: v2ExtendedSectionHeight,
+                ratingsViewModel: viewModel.mediaBarRatingsViewModel
+            )
+        }
+        .frame(width: cardWidth, alignment: .leading)
+        .animation(v2FocusAnimation, value: isFocused)
+    }
+
+    private func v2ImageUrl(for item: ServerItem, isExpanded: Bool) -> String? {
+        if isExpanded {
+            return viewModel.thumbImageUrl(for: item) ?? viewModel.posterImageUrl(for: item)
+        }
+        return viewModel.posterImageUrl(for: item)
     }
 
     private func imageUrl(for item: ServerItem) -> String? {
@@ -206,13 +324,261 @@ struct ContentRow: View {
     }
 }
 
+private struct HomeRowV2CardLabels: View {
+    let item: ServerItem
+    let isFocused: Bool
+    let width: CGFloat
+
+    @EnvironmentObject var theme: MoonfinTheme
+
+    private var safeWidth: CGFloat {
+        if width.isFinite, width > 1 {
+            return width
+        }
+        return 1
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            MarqueeText(
+                text: titleText,
+                font: .captionXs,
+                fontSize: TypographyTokens.fontSizeXs,
+                color: theme.colorScheme.listHeadline,
+                maxWidth: safeWidth,
+                isFocused: isFocused
+            )
+
+            if isEpisode, isFocused {
+                if let row2Text {
+                    MarqueeText(
+                        text: row2Text,
+                        font: .captionXs,
+                        fontSize: TypographyTokens.fontSizeXs,
+                        color: theme.colorScheme.listCaption,
+                        maxWidth: safeWidth,
+                        isFocused: isFocused
+                    )
+                }
+                if let row3Text {
+                    MarqueeText(
+                        text: row3Text,
+                        font: .captionXs,
+                        fontSize: TypographyTokens.fontSizeXs,
+                        color: theme.colorScheme.listCaption,
+                        maxWidth: safeWidth,
+                        isFocused: isFocused
+                    )
+                }
+            } else if let subtitleText {
+                MarqueeText(
+                    text: subtitleText,
+                    font: .captionXs,
+                    fontSize: TypographyTokens.fontSizeXs,
+                    color: theme.colorScheme.listCaption,
+                    maxWidth: safeWidth,
+                    isFocused: isFocused
+                )
+            }
+        }
+        .frame(width: safeWidth, alignment: .leading)
+    }
+
+    private var isEpisode: Bool {
+        item.type == .episode
+    }
+
+    private var titleText: String {
+        if isEpisode {
+            return normalizedSeriesName ?? item.name
+        }
+        return item.name
+    }
+
+    private var subtitleText: String? {
+        if isEpisode {
+            return episodeMarkerText ?? item.name
+        }
+        if isFocused {
+            return v2MetadataLine
+        }
+        return compactSubtitleText
+    }
+
+    private var row2Text: String? {
+        if let marker = episodeMarkerText, !item.name.isEmpty {
+            return "\(marker) - \(item.name)"
+        }
+        return item.name.isEmpty ? nil : item.name
+    }
+
+    private var row3Text: String? {
+        v2MetadataLine
+    }
+
+    private var compactSubtitleText: String? {
+        var parts: [String] = []
+
+        if let year = yearText {
+            parts.append(year)
+        }
+
+        if let resolution = ResolutionHelper.resolutionName(for: item), !resolution.isEmpty {
+            parts.append(resolution)
+        }
+
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " • ")
+    }
+
+    private var v2MetadataLine: String? {
+        var parts: [String] = []
+
+        if let year = yearText {
+            parts.append(year)
+        }
+
+        if let genres = item.genres, !genres.isEmpty {
+            let genreText = genres.prefix(2).joined(separator: " • ")
+            if !genreText.isEmpty {
+                parts.append(genreText)
+            }
+        }
+
+        if let runtime = runtimeText {
+            parts.append(runtime)
+        }
+
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " • ")
+    }
+
+    private var episodeMarkerText: String? {
+        guard let season = item.parentIndexNumber, let episode = item.indexNumber else {
+            return nil
+        }
+        return "S\(season):E\(episode)"
+    }
+
+    private var normalizedSeriesName: String? {
+        guard let value = item.seriesName?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return nil
+        }
+        return value
+    }
+
+    private var yearText: String? {
+        if let year = item.productionYear, year > 0 {
+            return String(year)
+        }
+        if let date = item.premiereDate {
+            return String(Calendar.current.component(.year, from: date))
+        }
+        return nil
+    }
+
+    private var runtimeText: String? {
+        guard let ticks = item.runTimeTicks, ticks > 0 else { return nil }
+        return RuntimeFormatter.format(ticks: ticks)
+    }
+}
+
+private struct HomeRowV2ExtendedSection: View {
+    let item: ServerItem
+    let isVisible: Bool
+    let width: CGFloat
+    let height: CGFloat
+    @ObservedObject var ratingsViewModel: MediaBarRatingsViewModel
+
+    @EnvironmentObject var theme: MoonfinTheme
+
+    private var safeWidth: CGFloat {
+        if width.isFinite, width > 1 {
+            return width
+        }
+        return 1
+    }
+
+    private var safeHeight: CGFloat {
+        if height.isFinite, height > 1 {
+            return height
+        }
+        return 1
+    }
+
+    private var contentWidth: CGFloat {
+        safeWidth
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: SpaceTokens.spaceXs) {
+            if let officialRatingText {
+                HStack(spacing: SpaceTokens.spaceXs) {
+                    Text(officialRatingText)
+                        .font(.captionXs)
+                        .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
+                        .padding(.horizontal, SpaceTokens.spaceSm)
+                        .padding(.vertical, 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: RadiusTokens.extraSmall)
+                                .stroke(theme.colorScheme.onBackground.opacity(0.3), lineWidth: 1)
+                        )
+                }
+            }
+
+            MediaBarRatingsRow(
+                ratings: ratingsViewModel.ratings,
+                enableAdditionalRatings: ratingsViewModel.enableAdditionalRatings
+            )
+
+            if let overviewText {
+                Text(overviewText)
+                    .font(.bodySm)
+                    .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
+                    .lineLimit(4, reservesSpace: true)
+                    .multilineTextAlignment(.leading)
+                    .frame(width: contentWidth, alignment: .leading)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(width: contentWidth, alignment: .topLeading)
+        .frame(width: safeWidth, height: safeHeight, alignment: .topLeading)
+        .opacity(isVisible ? 1 : 0)
+        .allowsHitTesting(false)
+    }
+
+    private var officialRatingText: String? {
+        guard let rating = item.officialRating?.trimmingCharacters(in: .whitespacesAndNewlines), !rating.isEmpty else {
+            return nil
+        }
+        return rating
+    }
+
+    private var overviewText: String? {
+        guard let overview = item.overview?.trimmingCharacters(in: .whitespacesAndNewlines), !overview.isEmpty else {
+            return nil
+        }
+        return overview
+    }
+}
+
 struct LibraryActionCard: View {
     let item: ServerItem
     let cardWidth: CGFloat
     let onFocused: () -> Void
     let onSelect: () -> Void
     @EnvironmentObject var theme: MoonfinTheme
+    @EnvironmentObject var container: AppContainer
     @FocusState private var isFocused: Bool
+
+    private var focusScale: CGFloat {
+        container.userPreferences[UserPreferences.cardFocusExpansion] && isFocused ? 1.05 : 1.0
+    }
+
+    private var focusAnimation: Animation? {
+        container.userPreferences[UserPreferences.cardFocusExpansion] ? .easeOut(duration: 0.15) : nil
+    }
 
     private var iconName: String {
         guard let ct = item.collectionType?.lowercased() else { return "folder" }
@@ -253,8 +619,8 @@ struct LibraryActionCard: View {
                 RoundedRectangle(cornerRadius: RadiusTokens.medium)
                     .stroke(isFocused ? theme.focusBorder.color : .clear, lineWidth: 3)
             )
-            .scaleEffect(isFocused ? 1.05 : 1.0)
-            .animation(.easeOut(duration: 0.15), value: isFocused)
+            .scaleEffect(focusScale)
+            .animation(focusAnimation, value: isFocused)
         }
         .buttonStyle(CleanButtonStyle())
         .focused($isFocused)
@@ -271,7 +637,16 @@ struct LiveTvActionCard: View {
     let onFocused: () -> Void
     let onSelect: () -> Void
     @EnvironmentObject var theme: MoonfinTheme
+    @EnvironmentObject var container: AppContainer
     @FocusState private var isFocused: Bool
+
+    private var focusScale: CGFloat {
+        container.userPreferences[UserPreferences.cardFocusExpansion] && isFocused ? 1.05 : 1.0
+    }
+
+    private var focusAnimation: Animation? {
+        container.userPreferences[UserPreferences.cardFocusExpansion] ? .easeOut(duration: 0.15) : nil
+    }
 
     private var iconName: String {
         switch item.id {
@@ -303,9 +678,9 @@ struct LiveTvActionCard: View {
                 RoundedRectangle(cornerRadius: RadiusTokens.medium)
                     .stroke(isFocused ? theme.focusBorder.color : .clear, lineWidth: 3)
             )
-            .scaleEffect(isFocused ? 1.05 : 1.0)
+            .scaleEffect(focusScale)
             .shadow(color: isFocused ? theme.accent.opacity(0.5) : .clear, radius: 8)
-            .animation(.easeOut(duration: 0.15), value: isFocused)
+            .animation(focusAnimation, value: isFocused)
         }
         .buttonStyle(CleanButtonStyle())
         .focused($isFocused)

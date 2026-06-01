@@ -4,10 +4,13 @@ import OSLog
 
 @MainActor
 final class SyncPlayRuntimeCoordinator {
+    var onDisplayMessage: ((String?, String) -> Void)?
+
     private weak var syncPlayManager: SyncPlayManager?
     private let serverRepository: ServerRepositoryProtocol
     private let serverClientFactory: MediaServerClientFactory
     private var serverCancellable: AnyCancellable?
+    private var syncPlayStateCancellable: AnyCancellable?
     private var currentWebSocket: ServerWebSocketApi?
     private var currentServer: Server?
     private let logger = Logger(subsystem: "org.moonfin.appletv", category: "SyncPlay")
@@ -31,40 +34,75 @@ final class SyncPlayRuntimeCoordinator {
                     await self.handleServerChange(server)
                 }
             }
+
+        if let syncPlayManager {
+            syncPlayStateCancellable = syncPlayManager.$state
+                .map(\.enabled)
+                .removeDuplicates()
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    guard let self else { return }
+                    Task { @MainActor in
+                        await self.refreshConnectionIfNeeded()
+                    }
+                }
+        }
     }
 
     func stop() {
         serverCancellable?.cancel()
         serverCancellable = nil
-        let ws = currentWebSocket
-        currentWebSocket = nil
+        syncPlayStateCancellable?.cancel()
+        syncPlayStateCancellable = nil
         currentServer = nil
-        Task { await ws?.disconnect() }
+        Task { @MainActor in
+            await disconnectCurrentWebSocket()
+        }
     }
 
     func appDidEnterBackground() {
-        let ws = currentWebSocket
-        currentWebSocket = nil
-        Task { await ws?.disconnect() }
+        Task { @MainActor in
+            await disconnectCurrentWebSocket()
+        }
     }
 
     func appDidBecomeActive() {
-        guard let server = currentServer, server.serverType == .jellyfin else { return }
         Task { @MainActor in
-            await connectWebSocket(for: server)
+            await refreshConnectionIfNeeded()
         }
     }
 
     private func handleServerChange(_ server: Server?) async {
+        let serverChanged = currentServer?.id != server?.id
+        if serverChanged {
+            await disconnectCurrentWebSocket()
+        }
+
+        currentServer = server
+        await refreshConnectionIfNeeded()
+    }
+
+    private var shouldMaintainRealtimeConnection: Bool {
+        guard let syncPlayManager else { return false }
+        return syncPlayManager.syncPlayEnabled && syncPlayManager.state.enabled
+    }
+
+    private func refreshConnectionIfNeeded() async {
+        guard let server = currentServer,
+              server.serverType == .jellyfin,
+              shouldMaintainRealtimeConnection else {
+            await disconnectCurrentWebSocket()
+            return
+        }
+
+        guard currentWebSocket == nil else { return }
+        await connectWebSocket(for: server)
+    }
+
+    private func disconnectCurrentWebSocket() async {
         let ws = currentWebSocket
         currentWebSocket = nil
         await ws?.disconnect()
-
-        currentServer = server
-
-        guard let server, server.serverType == .jellyfin else { return }
-
-        await connectWebSocket(for: server)
     }
 
     private func connectWebSocket(for server: Server) async {
@@ -79,6 +117,7 @@ final class SyncPlayRuntimeCoordinator {
             try await currentWebSocket?.connect()
             syncPlayManager?.handleRealtimeConnected()
         } catch {
+            currentWebSocket = nil
             logger.error("WebSocket connect failed: \(error.localizedDescription, privacy: .public)")
         }
     }
@@ -89,14 +128,42 @@ final class SyncPlayRuntimeCoordinator {
             syncPlayManager?.handlePlaybackCommand(command)
         case .syncPlayGroupUpdate(let update):
             syncPlayManager?.handleGroupUpdate(update)
+        case .generalCommand(let name, let arguments):
+            routeGeneralCommand(name: name, arguments: arguments)
         case .serverRestarting:
-            syncPlayManager?.handleRealtimeSessionInterrupted(message: "Server is restarting")
+            syncPlayManager?.handleRealtimeSessionInterrupted(message: Strings.syncPlayRuntimeCoordinatorServerRestarting)
         case .serverShuttingDown:
-            syncPlayManager?.handleRealtimeSessionInterrupted(message: "Server is shutting down")
+            syncPlayManager?.handleRealtimeSessionInterrupted(message: Strings.syncPlayRuntimeCoordinatorServerShuttingDown)
         case .sessionEnded:
-            syncPlayManager?.handleRealtimeSessionInterrupted(message: "Session ended")
+            syncPlayManager?.handleRealtimeSessionInterrupted(message: Strings.syncPlayRuntimeCoordinatorSessionEnded)
         default:
             break
         }
+    }
+
+    private func routeGeneralCommand(name: String, arguments: [String: String]) {
+        guard name.caseInsensitiveCompare("DisplayMessage") == .orderedSame else {
+            return
+        }
+
+        guard let text = argumentValue("Text", in: arguments),
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        let header = argumentValue("Header", in: arguments)
+        onDisplayMessage?(header, text)
+    }
+
+    private func argumentValue(_ key: String, in arguments: [String: String]) -> String? {
+        if let value = arguments[key] {
+            return value
+        }
+
+        for (name, value) in arguments where name.caseInsensitiveCompare(key) == .orderedSame {
+            return value
+        }
+
+        return nil
     }
 }

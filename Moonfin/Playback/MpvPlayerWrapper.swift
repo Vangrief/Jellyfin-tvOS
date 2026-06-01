@@ -95,6 +95,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     private(set) var videoView: UIView?
     private var subtitleOptions: [String: Any] = [:]
     private var audioSessionActive = false
+    private var audioUnitChannelLayoutFixInstalled = false
 
     private(set) var playbackBackendIdentifier: String = "mpv"
     private(set) var playbackFallbackReason: String?
@@ -111,8 +112,14 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     private var activeOutputIntent: MPVOutputIntent = .auto
     private var renderUpdatePending = false
     private var renderDisplayLink: CADisplayLink?
-    private var renderTickCounter: UInt = 0
+    private var preferredRenderFramesPerSecond: Int = 0
+    private let fallbackPropertyPollInterval: CFAbsoluteTime = 1.0
+    private let playbackPositionPublishInterval: CFAbsoluteTime = 0.25
+    private var lastPropertyEventAt: CFAbsoluteTime = 0
+    private var lastFallbackPropertyPollAt: CFAbsoluteTime = 0
+    private var lastPositionPublishAt: CFAbsoluteTime = 0
     private var mpvSubtitleOptions: [String: Any] = [:]
+    private var forceSubtitlesDisabledOnStart = false
     private var pendingMpvStartPosition: TimeInterval?
     private var pendingMpvSeekAttempts = 0
     private var pendingMpvSeekLastAttemptAt: CFAbsoluteTime = 0
@@ -120,14 +127,29 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     private let minPendingMpvSeekRetryInterval: CFAbsoluteTime = 0.2
     private var requestedContentRange: VideoDynamicRange = .unknown
     private var sinkIsHdrCapable = false
+    private var detectedSinkGeneration: VideoCapabilityDetector.AppleTVGeneration = .unknown
+    private var playbackQualityProfilePreference: PlaybackQualityProfile = .auto
+    private var activeMpvQualityProfile: MPVPlaybackQualityProfile = .compatibility
     private var activeToneMappingMode = "auto"
     private var lastRenderTimestamp: CFAbsoluteTime = 0
     private var lastWatchdogWarningAt: CFAbsoluteTime = 0
     private var renderStallCount: Int = 0
     private var renderWatchdogTimer: Timer?
     private var activePlaybackURL: String?
+    private var lastEngineInitError: String?
     private var intentChangeInProgress = false
+    private let intentChangeDebounceInterval: CFAbsoluteTime = 1.0
+    private var pendingOutputIntent: MPVOutputIntent?
+    private var pendingOutputIntentDetectedAt: CFAbsoluteTime = 0
+    private var mpvResumeAwaitingFirstFrame = false
+    private var mpvResumeGateWorkItem: DispatchWorkItem?
+    private let mpvResumeGateTimeout: TimeInterval = 1.5
+    private var mpvColorPipelineRestoreCount = 0
+    private var lastWakeColorRestoreAt: CFAbsoluteTime = 0
+    private let wakeColorRestoreThrottleInterval: CFAbsoluteTime = 0.25
     private var surfaceAttachedContinuations: [CheckedContinuation<Void, Never>] = []
+
+    private func subtitleDebug(_ message: @autoclosure () -> String) {}
 
     override init() {
         super.init()
@@ -191,6 +213,10 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         engine?.applySubtitleStyle(options)
     }
 
+    func setForceSubtitlesDisabledOnStart(_ force: Bool) {
+        forceSubtitlesDisabledOnStart = force
+    }
+
     func play(streamUrl: String, startPosition: TimeInterval = 0, audioOnly: Bool = false) async {
         if !audioOnly {
             await waitForSurface()
@@ -207,13 +233,29 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         applyDynamicRangeIntent()
     }
 
+    func configureDolbyVisionMetadata(profile _: Int?, level _: Int?, blSignalCompatibilityId _: Int?) {}
+
+    func configurePreferredRenderFramesPerSecond(_ fps: Int?) {
+        let normalized = max(0, fps ?? 0)
+        preferredRenderFramesPerSecond = normalized
+        if let link = renderDisplayLink {
+            link.preferredFramesPerSecond = normalized
+        }
+    }
+
+    func configurePlaybackQualityProfile(_ profile: PlaybackQualityProfile, generation: VideoCapabilityDetector.AppleTVGeneration) {
+        playbackQualityProfilePreference = profile
+        detectedSinkGeneration = generation
+    }
+
     func dynamicRangeTelemetrySnapshot() -> [String: String] {
         guard let engine else {
             return [
                 "mpv_dynamic_range_telemetry": "no_engine",
                 "mpv_intent_content_range": requestedContentRange.rawValue,
                 "mpv_intent_sink_hdr_capable": sinkIsHdrCapable ? "true" : "false",
-                "mpv_intent_tone_mapping": activeToneMappingMode
+                "mpv_intent_tone_mapping": activeToneMappingMode,
+                "mpv_color_pipeline_restorations": "\(mpvColorPipelineRestoreCount)"
             ]
         }
 
@@ -231,12 +273,21 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         let activeTrc = engine.getStringProperty("target-trc") ?? "unknown"
         let activeTM = engine.getStringProperty("tone-mapping") ?? "unknown"
         let activeGamut = engine.getStringProperty("gamut-mapping-mode") ?? "unknown"
+        let activePeak = engine.getStringProperty("target-peak") ?? "unknown"
         let activeHwdec = engine.getStringProperty("hwdec-current") ?? engine.getStringProperty("hwdec") ?? "unknown"
+        let frameDropCount = engine.getInt64Property("frame-drop-count").map { String($0) } ?? "unknown"
+        let decoderFrameDropCount = engine.getInt64Property("decoder-frame-drop-count").map { String($0) } ?? "unknown"
+        let displayFps = engine.getDoubleProperty("display-fps").map { String(format: "%.2f", $0) } ?? "unknown"
+        let estimatedVfFps = engine.getDoubleProperty("estimated-vf-fps").map { String(format: "%.2f", $0) } ?? "unknown"
+        let vsyncJitter = engine.getDoubleProperty("vsync-jitter").map { String(format: "%.4f", $0) } ?? "unknown"
 
         var result: [String: String] = [
             "mpv_dynamic_range_telemetry": "available",
             "mpv_intent_content_range": requestedContentRange.rawValue,
             "mpv_intent_sink_hdr_capable": sinkIsHdrCapable ? "true" : "false",
+            "mpv_sink_generation": detectedSinkGeneration.rawValue,
+            "mpv_quality_profile_preference": playbackQualityProfilePreference.rawValue,
+            "mpv_quality_profile_resolved": resolvedMpvQualityProfile().rawValue,
             "mpv_intent_tone_mapping": activeToneMappingMode,
             "mpv_input_primaries": inputPrimaries,
             "mpv_input_transfer": inputTransfer,
@@ -251,7 +302,14 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             "mpv_active_target_trc": activeTrc,
             "mpv_active_tone_mapping": activeTM,
             "mpv_active_gamut_mode": activeGamut,
-            "mpv_active_hwdec": activeHwdec
+            "mpv_active_target_peak": activePeak,
+            "mpv_active_hwdec": activeHwdec,
+            "mpv_frame_drop_count": frameDropCount,
+            "mpv_decoder_frame_drop_count": decoderFrameDropCount,
+            "mpv_display_fps": displayFps,
+            "mpv_estimated_vf_fps": estimatedVfFps,
+            "mpv_vsync_jitter": vsyncJitter,
+            "mpv_color_pipeline_restorations": "\(mpvColorPipelineRestoreCount)"
         ]
         for entry in engine.initDiagnostics {
             result["mpv_init_\(entry.key)"] = entry.value
@@ -259,12 +317,51 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         return result
     }
 
+    private func resolvedPlaybackQualityProfile() -> PlaybackQualityProfile {
+        switch playbackQualityProfilePreference {
+        case .auto:
+            return PlaybackQualityProfile.recommended(for: detectedSinkGeneration)
+        case .compatibility, .highQuality:
+            return playbackQualityProfilePreference
+        }
+    }
+
+    private func resolvedMpvQualityProfile() -> MPVPlaybackQualityProfile {
+        switch resolvedPlaybackQualityProfile() {
+        case .highQuality:
+            return .highQuality
+        case .auto, .compatibility:
+            return .compatibility
+        }
+    }
+
+    private var seekInProgress: Bool {
+        pendingMpvStartPosition != nil || pendingMpvSeekAttempts > 0
+    }
+
+    private func publishPlaybackPosition(_ timePos: TimeInterval, force: Bool = false) {
+        let clamped = max(0, timePos)
+        let now = CFAbsoluteTimeGetCurrent()
+
+        if !force && !seekInProgress && now - lastPositionPublishAt < playbackPositionPublishInterval {
+            return
+        }
+
+        currentTime = clamped
+        if duration > 0 {
+            position = Float(max(0, min(1, currentTime / duration)))
+        }
+        lastPositionPublishAt = now
+    }
+
     func pause() {
+        cancelMpvResumeGate()
         _ = engine?.setPause(true)
         state = .paused
     }
 
     func resume() {
+        cancelMpvResumeGate()
         _ = engine?.setPause(false)
         state = .playing
     }
@@ -276,6 +373,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     }
 
     func stopPlaybackOnly() {
+        cancelMpvResumeGate()
         _ = engine?.stopPlayback()
         stopRenderScheduler()
         activePlaybackURL = nil
@@ -283,6 +381,11 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         pendingMpvStartPosition = nil
         pendingMpvSeekAttempts = 0
         pendingMpvSeekLastAttemptAt = 0
+        pendingOutputIntent = nil
+        pendingOutputIntentDetectedAt = 0
+        lastPropertyEventAt = 0
+        lastFallbackPropertyPollAt = 0
+        lastPositionPublishAt = 0
         state = .idle
         position = 0
         currentTime = 0
@@ -296,10 +399,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
 
     func seek(to seconds: TimeInterval) {
         _ = engine?.seekAbsolute(seconds)
-        currentTime = max(0, seconds)
-        if duration > 0 {
-            position = Float(max(0, min(1, currentTime / duration)))
-        }
+        publishPlaybackPosition(seconds, force: true)
     }
 
     func seekBy(_ delta: TimeInterval) {
@@ -322,13 +422,21 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     }
 
     func setSubtitleTrack(_ trackIndex: Int32) {
+        subtitleDebug(
+            "subtitle_mpv_set track_id=\(trackIndex) current_track_before=\(self.currentSubtitleTrackIndex) tracks=\(self.subtitleTrackDebugSummary(self.subtitleTracks))"
+        )
         _ = engine?.setSubtitleTrack(trackIndex)
+        _ = engine?.command(["set", "sub-visibility", "yes"])
         currentSubtitleTrackIndex = trackIndex
+        subtitleDebug("subtitle_mpv_set_done track_id=\(trackIndex) current_track_after=\(self.currentSubtitleTrackIndex)")
     }
 
     func disableSubtitles() {
+        subtitleDebug("subtitle_mpv_disable current_track_before=\(self.currentSubtitleTrackIndex)")
         _ = engine?.disableSubtitles()
+        _ = engine?.command(["set", "sub-visibility", "no"])
         currentSubtitleTrackIndex = -1
+        subtitleDebug("subtitle_mpv_disable_done current_track_after=\(self.currentSubtitleTrackIndex)")
     }
 
     func setSubtitleDelay(_ interval: TimeInterval) {
@@ -348,7 +456,8 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     }
 
     func addSubtitle(url: URL) {
-        _ = engine?.command(["sub-add", url.absoluteString])
+        subtitleDebug("subtitle_mpv_add url=\(self.redactedURLString(url)) tracks_before=\(self.subtitleTracks.count)")
+        _ = engine?.command(["sub-add", url.absoluteString, "auto", "External"])
     }
 
     func setZoomMode(_ mode: ZoomMode) {
@@ -379,9 +488,13 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         updatePlaybackBackend(identifier: backend.rawValue, fallbackReason: fallbackReason)
     }
 
-    func configureAudioSession() {
+    func configureAudioSession(installChannelLayoutFix: Bool = true) {
+        if installChannelLayoutFix && !audioUnitChannelLayoutFixInstalled {
+            installAudioUnitChannelLayoutFix()
+            audioUnitChannelLayoutFixInstalled = true
+        }
+
         guard !audioSessionActive else { return }
-        installAudioUnitChannelLayoutFix()
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playback, mode: .moviePlayback, policy: .longFormAudio)
@@ -396,10 +509,10 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         pendingMpvSeekAttempts = 0
         pendingMpvSeekLastAttemptAt = 0
 
-        configureAudioSession()
+        configureAudioSession(installChannelLayoutFix: true)
 
         let intent = resolveOutputIntent()
-        activeToneMappingMode = intent == .sdr ? "spline" : (intent == .hdr ? "clip" : "auto")
+        activeToneMappingMode = intent == .sdr ? "hable" : "auto"
 
         if audioOnly {
             if ensureEngine(profile: .metal, outputIntent: intent, audioOnly: true) {
@@ -419,8 +532,6 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             return false
         }
 
-        // Only reconfigure layer format when the engine will be recreated.
-        // MoltenVK owns the layer pixelFormat after swapchain creation.
         let canReuseEngine = engine != nil && activeProfile == .metal && activeOutputIntent == intent
         if !canReuseEngine {
             videoSurface.configureColorSpace(forSDR: intent != .hdr)
@@ -432,36 +543,50 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
                 logger.info("mpv: metal engine started, intent=\(String(describing: intent))")
                 engine?.applySubtitleStyle(mpvSubtitleOptions)
                 updatePlaybackBackend(identifier: "mpv", fallbackReason: nil)
+                applyDynamicRangeIntent()
                 state = .opening
                 startRenderScheduler()
                 return true
             }
             logger.warning("mpv: metal loadFile failed")
         } else {
-            logger.warning("mpv: metal engine init failed, lastError=\(self.engine?.lastInitError ?? "nil")")
-        }
+            let initError = lastEngineInitError ?? "unknown_init_failure"
+            logger.warning("mpv: metal engine init failed, lastError=\(initError)")
+            let reason = "metal_renderer_unavailable:\(initError)"
+            lastEngineInitError = nil
+            resetEngine()
 
-        let metalError = engine?.lastInitError
-        resetEngine()
-
-        if ensureEngine(profile: .software, outputIntent: intent) {
-            _ = engine?.setPause(false)
-            if engine?.loadFile(url) == true {
-                logger.warning("mpv: fell to software engine, metalError=\(metalError ?? "nil")")
-                engine?.applySubtitleStyle(mpvSubtitleOptions)
-                let reason = metalError.map { "metal_renderer_unavailable:\($0)" } ?? "metal_renderer_unavailable"
-                updatePlaybackBackend(identifier: "mpv", fallbackReason: reason)
-                state = .opening
-                startRenderScheduler()
-                return true
+            if ensureEngine(profile: .software, outputIntent: intent) {
+                _ = engine?.setPause(false)
+                if engine?.loadFile(url) == true {
+                    logger.warning("mpv: fell to software engine, metalError=\(initError)")
+                    engine?.applySubtitleStyle(mpvSubtitleOptions)
+                    updatePlaybackBackend(identifier: "mpv", fallbackReason: reason)
+                    applyDynamicRangeIntent()
+                    state = .opening
+                    startRenderScheduler()
+                    return true
+                }
             }
-        }
 
+            resetEngine()
+            pendingMpvStartPosition = nil
+            pendingMpvSeekAttempts = 0
+            pendingMpvSeekLastAttemptAt = 0
+            return false
+        }
         resetEngine()
         pendingMpvStartPosition = nil
         pendingMpvSeekAttempts = 0
         pendingMpvSeekLastAttemptAt = 0
         return false
+    }
+
+    private func applyStartupSubtitlePolicyIfNeeded() {
+        guard forceSubtitlesDisabledOnStart else { return }
+        forceSubtitlesDisabledOnStart = false
+        _ = engine?.disableSubtitles()
+        currentSubtitleTrackIndex = -1
     }
 
     private func applyPendingMpvStartPositionIfNeeded() {
@@ -504,7 +629,12 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     }
 
     private func ensureEngine(profile: MPVRenderProfile, outputIntent: MPVOutputIntent = .auto, audioOnly: Bool = false) -> Bool {
-        if let engine, activeProfile == profile, activeOutputIntent == outputIntent {
+        let qualityProfile = resolvedMpvQualityProfile()
+
+        if let engine,
+           activeProfile == profile,
+           activeOutputIntent == outputIntent,
+           activeMpvQualityProfile == qualityProfile {
             return engine.isReady
         }
 
@@ -513,6 +643,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         let created = MPVEngine(
             renderProfile: profile,
             outputIntent: outputIntent,
+            qualityProfile: qualityProfile,
             drawableHandle: audioOnly ? nil : videoSurface.drawableHandle,
             updateHandler: { [weak self] in
                 DispatchQueue.main.async {
@@ -522,12 +653,15 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         )
 
         guard created.isReady else {
+            lastEngineInitError = created.lastInitError
             return false
         }
 
         engine = created
+        lastEngineInitError = nil
         activeProfile = profile
         activeOutputIntent = outputIntent
+        activeMpvQualityProfile = qualityProfile
         return true
     }
 
@@ -546,35 +680,67 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         let intent = resolveOutputIntent()
         switch intent {
         case .sdr:
-            activeToneMappingMode = "spline"
-            _ = engine.setRuntimeOption("tone-mapping", value: "spline")
-            _ = engine.setRuntimeOption("hdr-compute-peak", value: "yes")
+            activeToneMappingMode = "hable"
+            _ = engine.setRuntimeOption("tone-mapping", value: "hable")
+            _ = engine.setRuntimeOption("hdr-compute-peak", value: "no")
+            _ = engine.setRuntimeOption("target-colorspace-hint", value: "no")
             _ = engine.setRuntimeOption("target-prim", value: "bt.709")
             _ = engine.setRuntimeOption("target-trc", value: "bt.1886")
             _ = engine.setRuntimeOption("gamut-mapping-mode", value: "perceptual")
-        case .hdr:
-            activeToneMappingMode = "clip"
-            _ = engine.setRuntimeOption("tone-mapping", value: "clip")
-            _ = engine.setRuntimeOption("hdr-compute-peak", value: "no")
-            _ = engine.setRuntimeOption("target-prim", value: "auto")
-            _ = engine.setRuntimeOption("target-trc", value: "auto")
-            _ = engine.setRuntimeOption("gamut-mapping-mode", value: "auto")
-        case .auto:
+            _ = engine.setRuntimeOption("target-peak", value: "auto")
+            _ = engine.setRuntimeOption("video-output-levels", value: "limited")
+            _ = engine.setRuntimeOption("dither-depth", value: "auto")
+        case .hdr, .auto:
             activeToneMappingMode = "auto"
             _ = engine.setRuntimeOption("tone-mapping", value: "auto")
             _ = engine.setRuntimeOption("hdr-compute-peak", value: "yes")
+            _ = engine.setRuntimeOption("target-colorspace-hint", value: "yes")
             _ = engine.setRuntimeOption("target-prim", value: "auto")
             _ = engine.setRuntimeOption("target-trc", value: "auto")
             _ = engine.setRuntimeOption("gamut-mapping-mode", value: "auto")
+            _ = engine.setRuntimeOption("target-peak", value: "auto")
+            _ = engine.setRuntimeOption("video-output-levels", value: "limited")
+            _ = engine.setRuntimeOption("dither-depth", value: "auto")
         }
+
+        applyDolbyVisionFallbackHintsIfNeeded(engine)
+    }
+
+    private func applyDolbyVisionFallbackHintsIfNeeded(_ engine: MPVEngine) {
+        guard requestedContentRange == .dolbyVision else { return }
+        _ = engine.setRuntimeOption("dovi-metadata", value: "auto")
+    }
+
+    private func restoreColorPipelineAfterWake(force: Bool = false) {
+        guard playbackBackendIdentifier == "mpv", engine != nil else { return }
+
+        let now = CFAbsoluteTimeGetCurrent()
+        if !force, now - lastWakeColorRestoreAt < wakeColorRestoreThrottleInterval {
+            return
+        }
+
+        lastWakeColorRestoreAt = now
+        let intent = resolveOutputIntent()
+        videoSurface.configureColorSpace(forSDR: intent != .hdr)
+        videoSurface.prepareForForegroundResume()
+        videoSurface.updateLayout()
+        applyDynamicRangeIntent()
+        renderUpdatePending = true
+        mpvColorPipelineRestoreCount += 1
     }
 
     private func startRenderScheduler() {
         stopRenderScheduler()
-        renderTickCounter = 0
-        lastRenderTimestamp = CFAbsoluteTimeGetCurrent()
+        let now = CFAbsoluteTimeGetCurrent()
+        lastRenderTimestamp = now
         lastWatchdogWarningAt = 0
+        lastPropertyEventAt = now
+        lastFallbackPropertyPollAt = now
+        lastPositionPublishAt = 0
         let link = CADisplayLink(target: self, selector: #selector(handleRenderTick))
+        if preferredRenderFramesPerSecond > 0 {
+            link.preferredFramesPerSecond = preferredRenderFramesPerSecond
+        }
         link.add(to: .main, forMode: .common)
         renderDisplayLink = link
         renderWatchdogTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
@@ -596,7 +762,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         guard state == .playing else { return }
         let now = CFAbsoluteTimeGetCurrent()
         let elapsed = now - lastRenderTimestamp
-        if elapsed > 2, now - lastWatchdogWarningAt > 15 {
+        if elapsed > 1, now - lastWatchdogWarningAt > 15 {
             lastWatchdogWarningAt = now
             renderStallCount += 1
             logger.warning("render_watchdog stall detected: no render update for \(String(format: "%.1f", elapsed))s (count=\(self.renderStallCount))")
@@ -608,7 +774,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         if renderStallCount == 3 {
             logger.warning("render_watchdog recovery: force seek")
             _ = engine?.seekAbsolute(currentTime)
-        } else if renderStallCount == 5 {
+        } else if renderStallCount == 8 {
             logger.warning("render_watchdog recovery: engine recreation")
             let url = activePlaybackURL
             let pos = currentTime
@@ -618,27 +784,15 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             if let url {
                 _ = startMpvPlayback(url, startPosition: pos)
             }
-        } else if renderStallCount == 8 {
-            logger.warning("render_watchdog recovery: software fallback")
+        } else if renderStallCount == 12 {
+            logger.warning("render_watchdog recovery: second engine recreation")
             let url = activePlaybackURL
             let pos = currentTime
+            let savedStallCount = renderStallCount
             stopPlaybackOnly()
-            resetEngine()
+            renderStallCount = savedStallCount
             if let url {
-                activePlaybackURL = url
-                let intent = resolveOutputIntent()
-                videoSurface.configureColorSpace(forSDR: intent != .hdr)
-                if ensureEngine(profile: .software, outputIntent: intent),
-                   engine?.loadFile(url) == true {
-                    engine?.applySubtitleStyle(mpvSubtitleOptions)
-                    updatePlaybackBackend(identifier: "mpv", fallbackReason: "watchdog_software_fallback")
-                    state = .opening
-                    startRenderScheduler()
-                    renderStallCount = 0
-                    if pos > 0 {
-                        pendingMpvStartPosition = pos
-                    }
-                }
+                _ = startMpvPlayback(url, startPosition: pos)
             }
         }
     }
@@ -652,11 +806,49 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             }
             lastRenderTimestamp = CFAbsoluteTimeGetCurrent()
         }
-        renderTickCounter &+= 1
-        if renderTickCounter % 30 == 0 {
+
+        let now = CFAbsoluteTimeGetCurrent()
+        if now - lastPropertyEventAt >= fallbackPropertyPollInterval,
+           now - lastFallbackPropertyPollAt >= fallbackPropertyPollInterval {
             updateFromMpvProperties()
+            lastFallbackPropertyPollAt = now
         }
-        videoSurface.updateLayout()
+    }
+
+    private func beginMpvResumeGateIfNeeded() {
+        guard playbackBackendIdentifier == "mpv" else { return }
+        guard let engine else {
+            resume()
+            return
+        }
+
+        cancelMpvResumeGate()
+        mpvResumeAwaitingFirstFrame = true
+        state = .buffering(0.25)
+        videoSurface.prepareForForegroundResume()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.mpvResumeAwaitingFirstFrame else { return }
+            self.completeMpvResumeGate()
+        }
+        mpvResumeGateWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + mpvResumeGateTimeout, execute: workItem)
+
+        _ = engine.setPause(false)
+    }
+
+    private func completeMpvResumeGate() {
+        guard mpvResumeAwaitingFirstFrame else { return }
+        cancelMpvResumeGate()
+        if state != .paused {
+            state = .playing
+        }
+    }
+
+    private func cancelMpvResumeGate() {
+        mpvResumeAwaitingFirstFrame = false
+        mpvResumeGateWorkItem?.cancel()
+        mpvResumeGateWorkItem = nil
     }
 
     func snapshotPlaybackPosition() -> TimeInterval {
@@ -674,9 +866,14 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             state = .buffering(0.25)
             applyPendingMpvStartPositionIfNeeded()
             refreshTracksFromMpv()
+            applyStartupSubtitlePolicyIfNeeded()
         case MPVEngine.EventID.playbackRestart.rawValue:
             applyPendingMpvStartPositionIfNeeded()
-            state = .playing
+            if mpvResumeAwaitingFirstFrame {
+                state = .buffering(0.25)
+            } else {
+                state = .playing
+            }
             refreshTracksFromMpv()
         case MPVEngine.EventID.endFile.rawValue:
             if event.endReason == .error {
@@ -699,17 +896,24 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
 
     private func applyPropertyEvent(_ event: MPVEngine.Event) {
         guard let propertyName = event.propertyName else { return }
+        lastPropertyEventAt = CFAbsoluteTimeGetCurrent()
 
         switch propertyName {
         case "pause":
             if let paused = event.boolValue {
-                state = paused ? .paused : .playing
+                if paused {
+                    state = .paused
+                } else if mpvResumeAwaitingFirstFrame {
+                    state = .buffering(0.25)
+                } else {
+                    state = .playing
+                }
             }
         case "time-pos":
             if let timePos = event.doubleValue {
-                currentTime = max(0, timePos)
-                if duration > 0 {
-                    position = Float(max(0, min(1, currentTime / duration)))
+                publishPlaybackPosition(timePos, force: seekInProgress)
+                if mpvResumeAwaitingFirstFrame, timePos.isFinite, timePos >= 0 {
+                    completeMpvResumeGate()
                 }
             }
         case "duration":
@@ -762,7 +966,10 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         applyPendingMpvStartPositionIfNeeded()
 
         if let pos = engine.getDoubleProperty("time-pos") {
-            currentTime = pos
+            publishPlaybackPosition(pos, force: true)
+            if mpvResumeAwaitingFirstFrame, pos.isFinite, pos >= 0 {
+                completeMpvResumeGate()
+            }
         }
 
         if let dur = engine.getDoubleProperty("duration"), dur.isFinite, dur > 0 {
@@ -776,6 +983,8 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         if let paused = engine.getFlagProperty("pause") {
             if paused {
                 state = .paused
+            } else if mpvResumeAwaitingFirstFrame {
+                state = .buffering(0.25)
             } else if state == .opening || state == .buffering(0.25) || state == .paused {
                 state = .playing
             }
@@ -824,28 +1033,58 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     }
 
     private func checkMidStreamIntentChange(engine: MPVEngine) {
-        guard !intentChangeInProgress, state == .playing || state == .buffering(0) else { return }
+        guard !intentChangeInProgress else { return }
+        switch state {
+        case .playing, .buffering:
+            break
+        default:
+            return
+        }
+
         let primaries = engine.getStringProperty("video-params/primaries") ?? ""
         let gamma = engine.getStringProperty("video-params/gamma") ?? ""
         guard !primaries.isEmpty, !gamma.isEmpty else { return }
         let detected = intentFromVideoParams(primaries, gamma)
-        guard detected != activeOutputIntent else { return }
+
+        guard detected != activeOutputIntent else {
+            pendingOutputIntent = nil
+            pendingOutputIntentDetectedAt = 0
+            return
+        }
+
+        let now = CFAbsoluteTimeGetCurrent()
+        if pendingOutputIntent != detected {
+            pendingOutputIntent = detected
+            pendingOutputIntentDetectedAt = now
+            return
+        }
+
+        guard now - pendingOutputIntentDetectedAt >= intentChangeDebounceInterval else {
+            return
+        }
+
+        pendingOutputIntent = nil
+        pendingOutputIntentDetectedAt = 0
         handleOutputIntentChange(detected)
     }
 
     private func handleOutputIntentChange(_ newIntent: MPVOutputIntent) {
+        guard newIntent != activeOutputIntent else { return }
         guard let url = activePlaybackURL else { return }
         intentChangeInProgress = true
+        pendingOutputIntent = nil
+        pendingOutputIntentDetectedAt = 0
         let pos = currentTime
         logger.info("mid-stream intent change: \(String(describing: self.activeOutputIntent)) -> \(String(describing: newIntent))")
         stopPlaybackOnly()
         resetEngine()
         activePlaybackURL = url
-        activeToneMappingMode = newIntent == .sdr ? "spline" : (newIntent == .hdr ? "clip" : "auto")
+        activeToneMappingMode = newIntent == .sdr ? "hable" : "auto"
         videoSurface.configureColorSpace(forSDR: newIntent != .hdr)
         if ensureEngine(profile: activeProfile, outputIntent: newIntent),
            engine?.loadFile(url) == true {
             engine?.applySubtitleStyle(mpvSubtitleOptions)
+            applyDynamicRangeIntent()
             state = .opening
             startRenderScheduler()
             if pos > 0 {
@@ -872,6 +1111,9 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         }
         if nextSubtitles != subtitleTracks {
             subtitleTracks = nextSubtitles
+            subtitleDebug(
+                "subtitle_mpv_tracks_refreshed count=\(nextSubtitles.count) tracks=\(self.subtitleTrackDebugSummary(nextSubtitles)) current_sid=\(self.currentSubtitleTrackIndex)"
+            )
         }
     }
 
@@ -918,6 +1160,32 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         return value.isEmpty ? nil : value
     }
 
+    private func subtitleTrackDebugSummary(_ tracks: [PlayerTrack]) -> String {
+        guard !tracks.isEmpty else { return "[]" }
+        return "[" + tracks.map { track in
+            let language = track.language ?? "-"
+            let title = redactedTrackText(track.title ?? "-")
+            let name = redactedTrackText(track.name)
+            return "\(track.id){name=\(name),lang=\(language),title=\(title),default=\(track.isDefault),forced=\(track.isForced)}"
+        }.joined(separator: ";") + "]"
+    }
+
+    private func redactedURLString(_ url: URL) -> String {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return url.absoluteString
+        }
+        components.query = nil
+        components.fragment = nil
+        return components.string ?? url.absoluteString
+    }
+
+    private func redactedTrackText(_ text: String) -> String {
+        var value = text
+        value = value.replacingOccurrences(of: "api_key=[^&\\s]+", with: "api_key=<redacted>", options: .regularExpression)
+        value = value.replacingOccurrences(of: "x-emby-token=[^&\\s]+", with: "x-emby-token=<redacted>", options: [.regularExpression, .caseInsensitive])
+        return value
+    }
+
     private func registerLifecycleObservers() {
         let center = NotificationCenter.default
 
@@ -929,6 +1197,14 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
                     guard let self else { return }
+                    self.cancelMpvResumeGate()
+                    self.videoSurface.prepareForForegroundResume()
+                    guard self.playbackBackendIdentifier == "mpv" else {
+                        self.wasPlayingBeforeBackground = false
+                        self.videoSurface.updateLayout()
+                        return
+                    }
+
                     self.wasPlayingBeforeBackground = self.isPlaying
                     if self.wasPlayingBeforeBackground {
                         self.pause()
@@ -946,11 +1222,32 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
                     guard let self else { return }
-                    self.videoSurface.updateLayout()
+                    guard self.playbackBackendIdentifier == "mpv" else {
+                        self.wasPlayingBeforeBackground = false
+                        self.videoSurface.prepareForForegroundResume()
+                        self.videoSurface.updateLayout()
+                        return
+                    }
+
+                    self.restoreColorPipelineAfterWake(force: true)
+
                     if self.wasPlayingBeforeBackground {
                         self.wasPlayingBeforeBackground = false
-                        self.resume()
+                        self.beginMpvResumeGateIfNeeded()
                     }
+                }
+            }
+        )
+
+        lifecycleObservers.append(
+            center.addObserver(
+                forName: UIScreen.didConnectNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.restoreColorPipelineAfterWake()
                 }
             }
         )
@@ -1014,6 +1311,11 @@ private enum MPVOutputIntent {
     case hdr
 }
 
+private enum MPVPlaybackQualityProfile: String {
+    case compatibility
+    case highQuality
+}
+
 private final class MPVVideoSurface {
     private weak var hostView: UIView?
     private let metalLayer = SafeMetalLayer()
@@ -1048,6 +1350,11 @@ private final class MPVVideoSurface {
         if metalLayer.contentsScale != scale {
             metalLayer.contentsScale = scale
         }
+    }
+
+    func prepareForForegroundResume() {
+        metalLayer.isOpaque = true
+        metalLayer.backgroundColor = UIColor.black.cgColor
     }
 
     func teardown() {
@@ -1130,7 +1437,7 @@ private final class MPVEngine {
     var isReady: Bool { handle != nil }
     private(set) var lastInitError: String?
 
-    init(renderProfile: MPVRenderProfile, outputIntent: MPVOutputIntent = .auto, drawableHandle: UInt64?, updateHandler: @escaping () -> Void) {
+    init(renderProfile: MPVRenderProfile, outputIntent: MPVOutputIntent = .auto, qualityProfile: MPVPlaybackQualityProfile = .compatibility, drawableHandle: UInt64?, updateHandler: @escaping () -> Void) {
         guard let created = mpv_create() else { return }
 
         if let drawableHandle {
@@ -1139,7 +1446,7 @@ private final class MPVEngine {
             _ = setOptionString("vo", value: "gpu-next", on: created)
             _ = setOptionString("gpu-api", value: "vulkan", on: created)
             _ = setOptionString("gpu-context", value: "moltenvk", on: created)
-            _ = setOptionString("hwdec-codecs", value: "all", on: created)
+            _ = setOptionString("hwdec-codecs", value: "h264,hevc,vp9,av1", on: created)
         } else {
             _ = setOptionString("vo", value: "null", on: created)
             _ = setOptionString("vid", value: "no", on: created)
@@ -1149,6 +1456,7 @@ private final class MPVEngine {
         _ = setOptionString("subs-fallback", value: "yes", on: created)
 
         initDiagnostics["output_intent"] = "\(outputIntent)"
+        initDiagnostics["quality_profile"] = qualityProfile.rawValue
 
         if drawableHandle != nil {
             func setTracked(_ name: String, _ value: String) {
@@ -1161,46 +1469,39 @@ private final class MPVEngine {
                 setTracked("target-colorspace-hint", "no")
                 setTracked("target-prim", "bt.709")
                 setTracked("target-trc", "bt.1886")
-                setTracked("tone-mapping", "spline")
+                setTracked("tone-mapping", "hable")
                 setTracked("gamut-mapping-mode", "perceptual")
-                setTracked("hdr-compute-peak", "yes")
-            case .hdr:
-                setTracked("target-colorspace-hint", "auto")
-                setTracked("target-prim", "auto")
-                setTracked("target-trc", "auto")
-                setTracked("tone-mapping", "clip")
-                setTracked("gamut-mapping-mode", "auto")
+                setTracked("target-peak", "auto")
                 setTracked("hdr-compute-peak", "no")
-            case .auto:
-                setTracked("target-colorspace-hint", "no")
+                setTracked("video-output-levels", "limited")
+                setTracked("dither-depth", "auto")
+            case .hdr, .auto:
+                setTracked("target-colorspace-hint", "yes")
                 setTracked("target-prim", "auto")
                 setTracked("target-trc", "auto")
                 setTracked("tone-mapping", "auto")
                 setTracked("gamut-mapping-mode", "auto")
+                setTracked("target-peak", "auto")
                 setTracked("hdr-compute-peak", "yes")
+                setTracked("video-output-levels", "limited")
+                setTracked("dither-depth", "auto")
             }
 
-            _ = setOptionString("allow-delayed-peak-detect", value: "yes", on: created)
-            _ = setOptionString("deband", value: "yes", on: created)
-            _ = setOptionString("temporal-dither", value: "yes", on: created)
+            if qualityProfile == .highQuality {
+                _ = setOptionString("deband", value: "yes", on: created)
+                _ = setOptionString("temporal-dither", value: "yes", on: created)
+                _ = setOptionString("interpolation", value: "yes", on: created)
+                _ = setOptionString("scale", value: "ewa_lanczos", on: created)
+                _ = setOptionString("cscale", value: "ewa_lanczos", on: created)
+            }
+
             _ = setOptionString("vd-lavc-film-grain", value: "gpu", on: created)
             _ = setOptionString("video-rotate", value: "no", on: created)
-
-            _ = setOptionString("video-sync", value: "display-resample", on: created)
-            _ = setOptionString("interpolation", value: "yes", on: created)
-            _ = setOptionString("scale", value: "ewa_lanczos", on: created)
-            _ = setOptionString("dscale", value: "mitchell", on: created)
-            _ = setOptionString("cscale", value: "ewa_lanczos", on: created)
-            _ = setOptionString("correct-downscaling", value: "yes", on: created)
             _ = setOptionString("deinterlace", value: "auto", on: created)
         }
 
-        _ = setOptionString("network-timeout", value: "30", on: created)
+        _ = setOptionString("network-timeout", value: "120", on: created)
         _ = setOptionString("user-agent", value: "Moonfin-tvOS/\(AppConstants.clientVersion)", on: created)
-        _ = setOptionString("demuxer-max-bytes", value: "250MiB", on: created)
-        _ = setOptionString("demuxer-max-back-bytes", value: "75MiB", on: created)
-        _ = setOptionString("cache", value: "yes", on: created)
-        _ = setOptionString("cache-secs", value: "120", on: created)
 
         switch renderProfile {
         case .metal:
@@ -1210,7 +1511,7 @@ private final class MPVEngine {
 #if targetEnvironment(simulator)
             _ = setOptionString("hwdec", value: "no", on: created)
 #else
-            _ = setOptionString("hwdec", value: "auto", on: created)
+            _ = setOptionString("hwdec", value: "videotoolbox", on: created)
 #endif
         case .software:
             if drawableHandle != nil {

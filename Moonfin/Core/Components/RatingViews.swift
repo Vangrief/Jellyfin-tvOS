@@ -30,6 +30,8 @@ private struct BaseRatingChipView<Icon: View>: View {
     let sharedHeight: CGFloat?
     let icon: Icon
 
+    @EnvironmentObject var theme: MoonfinTheme
+
     init(valueText: String, labelText: String?, sharedHeight: CGFloat?, @ViewBuilder icon: () -> Icon) {
         self.valueText = valueText
         self.labelText = labelText
@@ -38,23 +40,23 @@ private struct BaseRatingChipView<Icon: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 7) {
                 icon
                 Text(valueText)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
+                    .font(.token(20, weight: .bold))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground)
             }
             if let labelText {
                 Text(labelText)
-                    .font(.system(size: 16))
-                    .foregroundColor(.white.opacity(0.5))
+                    .font(.token(16))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.5))
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
         .frame(height: sharedHeight)
         .background(
             GeometryReader { geometry in
@@ -62,7 +64,11 @@ private struct BaseRatingChipView<Icon: View>: View {
                     .preference(key: RatingChipHeightPreferenceKey.self, value: geometry.size.height)
             }
         )
-        .background(Color.white.opacity(0.1))
+        .background(theme.isNeonPulseTheme ? theme.neonSecondaryColor.opacity(0.12) : theme.colorScheme.button.opacity(0.1))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(theme.isNeonPulseTheme ? theme.neonPrimaryColor.opacity(0.85) : .clear, lineWidth: 1)
+        )
         .cornerRadius(8)
     }
 }
@@ -73,18 +79,26 @@ struct RatingChipView: View {
     let showLabel: Bool
     var sharedHeight: CGFloat? = nil
 
-    var body: some View {
-        let scorePercent = Int(normalizedValue * 100)
-        if let iconName = RatingIconProvider.getIcon(source: source, scorePercent: scorePercent) {
-            let ratingSource = RatingSource(rawValue: source)
-            let formatted = ratingSource?.format(normalizedValue) ?? "\(scorePercent)%"
-            let label = ratingSource?.label ?? source
+    @EnvironmentObject var theme: MoonfinTheme
 
-            BaseRatingChipView(valueText: formatted, labelText: showLabel ? label : nil, sharedHeight: sharedHeight) {
+    var body: some View {
+        let canonicalSource = RatingSource.canonicalSourceRawValue(source)
+        let scorePercent = Int(normalizedValue * 100)
+        let iconName = RatingIconProvider.getIcon(source: canonicalSource, scorePercent: scorePercent)
+        let ratingSource = RatingSource(rawValue: canonicalSource)
+        let formatted = ratingSource?.format(normalizedValue) ?? "\(scorePercent)%"
+        let label = ratingSource?.label ?? canonicalSource
+
+        BaseRatingChipView(valueText: formatted, labelText: showLabel ? label : nil, sharedHeight: sharedHeight) {
+            if let iconName {
                 Image(iconName)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 32, height: 32)
+            } else {
+                Image(systemName: "tag.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(theme.colorScheme.onBackground.opacity(0.9))
             }
         }
     }
@@ -108,18 +122,27 @@ struct CompactRatingChipView: View {
     let source: String
     let normalizedValue: Float
 
-    var body: some View {
-        let scorePercent = Int(normalizedValue * 100)
-        if let iconName = RatingIconProvider.getIcon(source: source, scorePercent: scorePercent) {
-            let ratingSource = RatingSource(rawValue: source)
-            let formatted = ratingSource?.format(normalizedValue) ?? "\(scorePercent)%"
+    @EnvironmentObject var theme: MoonfinTheme
 
-            HStack(spacing: 3) {
-                Image(iconName).resizable().aspectRatio(contentMode: .fit).frame(width: 14, height: 14)
-                Text(formatted)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.7))
+    var body: some View {
+        let canonicalSource = RatingSource.canonicalSourceRawValue(source)
+        let scorePercent = Int(normalizedValue * 100)
+        let iconName = RatingIconProvider.getIcon(source: canonicalSource, scorePercent: scorePercent)
+        let ratingSource = RatingSource(rawValue: canonicalSource)
+        let formatted = ratingSource?.format(normalizedValue) ?? "\(scorePercent)%"
+
+        HStack(spacing: 3) {
+            if let iconName {
+                Image(iconName).resizable().aspectRatio(contentMode: .fit).frame(width: 16, height: 16)
+            } else {
+                Image(systemName: "tag.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.7))
             }
+
+            Text(formatted)
+                .font(.token(13, weight: .semibold))
+                .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.7))
         }
     }
 }
@@ -128,32 +151,51 @@ struct MediaBarRatingRow: View {
     let source: String
     let value: Float
 
-    var body: some View {
-        if source == "stars" {
-            HStack(spacing: 4) {
-                Text("★")
-                    .font(.system(size: 20))
-                    .foregroundColor(Color(red: 1, green: 0.84, blue: 0))
-                Text(String(format: "%.1f", value))
-                    .font(.system(size: 20))
-                    .foregroundColor(.white)
-                    .fixedSize()
-            }
-        } else {
-            let scorePercent = Int(value * 100)
-            let iconName = RatingIconProvider.getIcon(source: source, scorePercent: scorePercent)
-            let formatted = RatingSource(rawValue: source)?.format(value) ?? "\(scorePercent)%"
+    @EnvironmentObject var theme: MoonfinTheme
 
-            HStack(spacing: 4) {
-                if let iconName {
-                    Image(iconName).resizable().aspectRatio(contentMode: .fit).frame(width: 24, height: 24)
+    private var borderColor: Color {
+        theme.isNeonPulseTheme ? theme.neonPrimaryColor.opacity(0.85) : .clear
+    }
+
+    var body: some View {
+        Group {
+            if RatingSource.canonicalSourceRawValue(source) == RatingSource.communityRawValue {
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(Color(red: 1, green: 0.84, blue: 0))
+                    Text(String(format: "%.1f", value))
+                        .font(.token(TypographyTokens.fontSizeXs))
+                        .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground)
+                        .fixedSize()
                 }
-                Text(formatted)
-                    .font(.system(size: 20))
-                    .foregroundColor(.white)
-                    .fixedSize()
+            } else {
+                let canonicalSource = RatingSource.canonicalSourceRawValue(source)
+                let scorePercent = Int(value * 100)
+                let iconName = RatingIconProvider.getIcon(source: canonicalSource, scorePercent: scorePercent)
+                let formatted = RatingSource(rawValue: canonicalSource)?.format(value) ?? "\(scorePercent)%"
+
+                HStack(spacing: 4) {
+                    if let iconName {
+                        Image(iconName).resizable().aspectRatio(contentMode: .fit).frame(width: 28, height: 28)
+                    } else {
+                        Image(systemName: "tag.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground)
+                    }
+                    Text(formatted)
+                        .font(.token(TypographyTokens.fontSizeXs))
+                        .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground)
+                        .fixedSize()
+                }
             }
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 3)
+        .overlay(
+            RoundedRectangle(cornerRadius: RadiusTokens.extraSmall)
+                .stroke(borderColor, lineWidth: 1)
+        )
     }
 }
 
@@ -206,14 +248,25 @@ struct CompactRatingsFlowView: View {
 struct MediaBarRatingsRow: View {
     let ratings: [(String, Float)]
     let enableAdditionalRatings: Bool
+    @EnvironmentObject var container: AppContainer
 
     var body: some View {
-        let filtered = ratings.filter { source, _ in
-            if !enableAdditionalRatings && source != "stars" && source != "tomatoes" && source != "tmdb_episode" { return false }
-            return true
-        }
+        let prefs = container.userPreferences
+        let showRatingBadges = prefs[UserPreferences.showRatingBadges]
 
-        if !filtered.isEmpty {
+        let enabledSourcesOrdered = RatingSource.canonicalEnabledSourceOrder(prefs[UserPreferences.enabledRatings])
+        let hasEpisodeRating = ratings.contains { RatingSource.canonicalSourceRawValue($0.0) == RatingSource.tmdbEpisodeRawValue }
+
+        let filtered = RatingDisplayPolicy.apply(
+            ratings: ratings,
+            enabledSourcesOrdered: enabledSourcesOrdered,
+            enableAdditionalRatings: enableAdditionalRatings,
+            isEpisode: hasEpisodeRating,
+            enableEpisodeRatings: prefs[UserPreferences.enableEpisodeRatings],
+            hasEpisodeRating: hasEpisodeRating
+        )
+
+        if showRatingBadges && !filtered.isEmpty {
             HStack(spacing: 16) {
                 ForEach(filtered, id: \.0) { source, value in
                     MediaBarRatingRow(source: source, value: value)

@@ -4,6 +4,7 @@ struct NextUpOverlay: View {
     let nextItem: ServerItem
     let countdown: Int
     let imageUrl: String?
+    let behavior: NextUpBehavior
     let onPlayNext: () -> Void
     let onClose: () -> Void
 
@@ -55,7 +56,9 @@ struct NextUpOverlay: View {
 
     private var episodeCard: some View {
         HStack(spacing: SpaceTokens.spaceLg) {
-            if let urlString = imageUrl, let url = URL(string: urlString) {
+            if behavior == .extended,
+               let urlString = imageUrl,
+               let url = URL(string: urlString) {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):
@@ -80,14 +83,14 @@ struct NextUpOverlay: View {
                     .foregroundColor(.white)
                     .lineLimit(2)
 
-                if let overview = nextItem.overview {
+                if behavior == .extended, let overview = nextItem.overview {
                     Text(overview)
                         .font(.bodySm)
                         .foregroundColor(theme.colorScheme.listCaption)
                         .lineLimit(3)
                 }
 
-                if let ticks = nextItem.runTimeTicks {
+                if behavior == .extended, let ticks = nextItem.runTimeTicks {
                     let minutes = Int(ticks / 600_000_000)
                     Text(Strings.runtimeMinutes(minutes))
                         .font(.bodySm)
@@ -101,7 +104,7 @@ struct NextUpOverlay: View {
             RoundedRectangle(cornerRadius: RadiusTokens.large)
                 .fill(theme.colorScheme.surface.opacity(0.6))
         )
-        .frame(maxWidth: 900)
+        .frame(maxWidth: behavior == .extended ? 900 : 620)
     }
 
     private var episodeLabel: String {

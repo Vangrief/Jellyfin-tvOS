@@ -12,7 +12,7 @@ struct ProgressBarOverlay: View {
             Spacer()
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(Color.black.opacity(0.5))
+                    .fill(theme.colorScheme.scrim.opacity(0.5))
                     .frame(height: 4)
                 GeometryReader { geo in
                     Rectangle()
@@ -52,7 +52,7 @@ struct FocusableItemCard: View {
                 .cornerRadius(RadiusTokens.small)
                 .overlay(
                     RoundedRectangle(cornerRadius: RadiusTokens.small)
-                        .stroke(isFocused ? theme.focusBorder.color : .clear, lineWidth: isFocused ? 3 : 0)
+                        .stroke(isFocused ? theme.effectiveFocusColor : .clear, lineWidth: isFocused ? 3 : 0)
                 )
             }
             .buttonStyle(CleanButtonStyle())
@@ -70,17 +70,18 @@ struct FocusableItemCard: View {
                     text: item.name,
                     font: .bodySm,
                     fontSize: TypographyTokens.fontSizeSm,
-                    color: theme.colorScheme.onBackground,
+                    color: theme.colorScheme.listHeadline,
                     maxWidth: cardWidth,
                     isFocused: isFocused
                 )
+                .neonTextGlow(theme, active: theme.isNeonPulseTheme)
 
                 if !item.cardSubtitle.isEmpty {
                     MarqueeText(
                         text: item.cardSubtitle,
                         font: .captionXs,
                         fontSize: TypographyTokens.fontSizeXs,
-                        color: theme.colorScheme.onBackground.opacity(0.6),
+                        color: theme.colorScheme.listCaption,
                         maxWidth: cardWidth,
                         isFocused: isFocused
                     )
@@ -106,29 +107,31 @@ struct FocusableCastCard: View {
         Button(action: onSelect) {
             VStack(spacing: SpaceTokens.spaceXs) {
                 CachedImage(urlString: imageUrl)
-                    .frame(width: 150, height: 150)
+                    .frame(width: 180, height: 180)
                     .clipShape(Circle())
                     .background(
                         Circle().fill(theme.colorScheme.surface)
                     )
                     .overlay(
                         Circle()
-                            .stroke(isFocused ? theme.focusBorder.color : .clear, lineWidth: isFocused ? 3 : 0)
+                            .stroke(isFocused ? theme.effectiveFocusColor : .clear, lineWidth: isFocused ? 3 : 0)
                     )
 
                 Text(person.name)
                     .font(.bodySm)
-                    .foregroundColor(theme.colorScheme.onBackground)
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonPrimaryColor : theme.colorScheme.onBackground)
                     .lineLimit(1)
+                    .neonTextGlow(theme, active: theme.isNeonPulseTheme)
 
                 if let role = person.role, !role.isEmpty {
                     Text(role)
                         .font(.caption2xs)
-                        .foregroundColor(theme.colorScheme.listCaption)
+                        .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.listCaption)
                         .lineLimit(1)
                 }
             }
-            .frame(width: 165)
+            .frame(width: 200)
+            .contentShape(Rectangle())
         }
         .buttonStyle(CleanButtonStyle())
         .focused($isFocused)
@@ -153,8 +156,8 @@ struct FocusableEpisodeCard: View {
     @EnvironmentObject var theme: MoonfinTheme
     @FocusState private var isFocused: Bool
 
-    private let thumbWidth: CGFloat = 340
-    private let thumbHeight: CGFloat = 191
+    private let thumbWidth: CGFloat = 400
+    private let thumbHeight: CGFloat = 225
 
     var body: some View {
         Button(action: onSelect) {
@@ -185,10 +188,10 @@ struct FocusableEpisodeCard: View {
 
             if item.userData?.played ?? false {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.colorGreen500)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.colorScheme.badge : .colorGreen500)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(6)
+                    .padding(8)
             }
         }
         .frame(width: thumbWidth, height: thumbHeight)
@@ -196,7 +199,7 @@ struct FocusableEpisodeCard: View {
         .cornerRadius(RadiusTokens.small)
         .overlay(
             RoundedRectangle(cornerRadius: RadiusTokens.small)
-                .stroke(isFocused ? theme.focusBorder.color : .clear, lineWidth: isFocused ? 3 : 0)
+                .stroke(isFocused ? theme.effectiveFocusColor : .clear, lineWidth: isFocused ? 3 : 0)
         )
     }
 
@@ -211,8 +214,9 @@ struct FocusableEpisodeCard: View {
             Text(item.name)
                 .font(.bodyLg)
                 .fontWeight(.semibold)
-                .foregroundColor(theme.colorScheme.onBackground)
+                .foregroundColor(theme.isNeonPulseTheme ? theme.neonPrimaryColor : theme.colorScheme.onBackground)
                 .lineLimit(1)
+                .neonTextGlow(theme, active: theme.isNeonPulseTheme)
 
             if let ticks = item.runTimeTicks, ticks > 0 {
                 Text(RuntimeFormatter.format(ticks: ticks))
@@ -223,7 +227,7 @@ struct FocusableEpisodeCard: View {
             if let overview = item.overview, !overview.isEmpty {
                 Text(overview)
                     .font(.bodySm)
-                    .foregroundColor(theme.colorScheme.onBackground.opacity(0.6))
+                    .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.6))
                     .lineLimit(3)
             }
         }
@@ -260,21 +264,21 @@ struct FocusableTrackRow: View {
             if let num = track.indexNumber {
                 Text("\(num)")
                     .font(.bodyMd)
-                    .foregroundColor(isFocused ? .black.opacity(0.75) : theme.colorScheme.listCaption)
+                    .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.75) : theme.colorScheme.listCaption)
                     .frame(width: 40, alignment: .trailing)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.name)
                     .font(.bodyMd)
-                    .foregroundColor(isFocused ? .black : theme.colorScheme.onBackground)
+                    .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused : theme.colorScheme.onBackground)
                     .lineLimit(1)
 
                 let artistText = (track.artists?.joined(separator: ", ") ?? track.albumArtist ?? "")
                 if !artistText.isEmpty {
                     Text(artistText)
                         .font(.bodySm)
-                        .foregroundColor(isFocused ? .black.opacity(0.7) : theme.colorScheme.listCaption)
+                        .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.7) : theme.colorScheme.listCaption)
                         .lineLimit(1)
                 }
             }
@@ -284,12 +288,12 @@ struct FocusableTrackRow: View {
             if let ticks = track.runTimeTicks {
                 Text(RuntimeFormatter.format(ticks: ticks))
                     .font(.bodySm)
-                    .foregroundColor(isFocused ? .black.opacity(0.65) : theme.colorScheme.listCaption)
+                    .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.65) : theme.colorScheme.listCaption)
             }
 
             Image(systemName: "chevron.right.2")
                 .font(.bodySm)
-                .foregroundColor(isFocused ? .black.opacity(0.75) : theme.colorScheme.listCaption.opacity(0.75))
+                .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.75) : theme.colorScheme.listCaption.opacity(0.75))
         }
         .padding(.horizontal, SpaceTokens.spaceMd)
         .padding(.vertical, SpaceTokens.spaceSm)
@@ -297,8 +301,8 @@ struct FocusableTrackRow: View {
             RoundedRectangle(cornerRadius: RadiusTokens.small)
                 .fill(
                     isFocused
-                        ? Color.white
-                        : (rowIndex.isMultiple(of: 2) ? Color.clear : Color.white.opacity(0.04))
+                        ? theme.colorScheme.buttonFocused
+                        : (rowIndex.isMultiple(of: 2) ? Color.clear : theme.colorScheme.onBackground.opacity(0.04))
                 )
         )
         .contentShape(Rectangle())
@@ -394,25 +398,39 @@ struct FocusableSeasonCard: View {
 struct FocusFirstRow<Content: View>: View {
     let firstItemId: String?
     let restoredItemId: String?
+    let preferredItemId: String?
     var focusTrigger: Int = 0
+    var transitionToken: Int = 0
     var applyFocusSection: Bool = true
     let content: (FocusState<String?>.Binding) -> Content
 
     @FocusState private var focusedId: String?
 
-    init(firstItemId: String?, restoredItemId: String? = nil, focusTrigger: Int = 0, applyFocusSection: Bool = true, @ViewBuilder content: @escaping (FocusState<String?>.Binding) -> Content) {
+    init(firstItemId: String?, restoredItemId: String? = nil, preferredItemId: String? = nil, focusTrigger: Int = 0, transitionToken: Int = 0, applyFocusSection: Bool = true, @ViewBuilder content: @escaping (FocusState<String?>.Binding) -> Content) {
         self.firstItemId = firstItemId
         self.restoredItemId = restoredItemId
+        self.preferredItemId = preferredItemId
         self.focusTrigger = focusTrigger
+        self.transitionToken = transitionToken
         self.applyFocusSection = applyFocusSection
         self.content = content
     }
 
     var body: some View {
         scrollContent
-            .defaultFocus($focusedId, restoredItemId ?? firstItemId)
+            .defaultFocus($focusedId, preferredItemId ?? restoredItemId ?? firstItemId)
+            .onAppear {
+                guard transitionToken > 0,
+                      let target = preferredItemId ?? restoredItemId
+                else { return }
+                focusedId = target
+            }
             .onChange(of: focusTrigger) { newValue in
                 guard newValue > 0, let target = restoredItemId ?? firstItemId else { return }
+                focusedId = target
+            }
+            .onChange(of: transitionToken) { newValue in
+                guard newValue > 0, let target = preferredItemId ?? restoredItemId else { return }
                 focusedId = target
             }
     }
@@ -432,39 +450,135 @@ struct FocusFirstRow<Content: View>: View {
 
 // MARK: - Expandable Bio
 
+private struct ExpandableBioWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct ExpandableBioCollapsedHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct ExpandableBioFullHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct ExpandableBioText: View {
     let text: String
     @Binding var isExpanded: Bool
+    var lineLimit: Int = 6
 
     @EnvironmentObject var theme: MoonfinTheme
     @FocusState private var isFocused: Bool
+    @State private var textWidth: CGFloat = 0
+    @State private var collapsedHeight: CGFloat = 0
+    @State private var fullHeight: CGFloat = 0
+
+    private var canExpand: Bool {
+        textWidth > 0 && (fullHeight - collapsedHeight > 1)
+    }
 
     var body: some View {
-        Button {
-            isExpanded.toggle()
-        } label: {
-            VStack(alignment: .leading, spacing: SpaceTokens.spaceXs) {
-                Text(text)
-                    .font(.bodyLg)
-                    .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
-                    .lineLimit(isExpanded ? nil : 6)
-                    .padding(.horizontal, SpaceTokens.spaceSm)
-
-                if !isExpanded {
-                    Text(Strings.pressToExpand)
-                        .font(.captionXs)
-                        .foregroundColor(isFocused ? .white.opacity(0.7) : theme.colorScheme.onBackground.opacity(0.4))
-                        .padding(.horizontal, SpaceTokens.spaceSm)
+        Group {
+            if canExpand {
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    bioContent(showToggle: true)
                 }
+                .buttonStyle(CleanButtonStyle())
+                .focused($isFocused)
+            } else {
+                bioContent(showToggle: false)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, SpaceTokens.spaceSm)
-            .background(
-                RoundedRectangle(cornerRadius: RadiusTokens.small)
-                    .fill(isFocused ? Color.white.opacity(0.08) : Color.clear)
-            )
         }
-        .buttonStyle(CleanButtonStyle())
-        .focused($isFocused)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ExpandableBioWidthPreferenceKey.self, value: proxy.size.width)
+            }
+        )
+        .onPreferenceChange(ExpandableBioWidthPreferenceKey.self) { width in
+            let measured = max(0, width - (SpaceTokens.spaceSm * 2))
+            if abs(textWidth - measured) > 0.5 {
+                textWidth = measured
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            if textWidth > 0 {
+                measurementLayer
+            }
+        }
+        .onPreferenceChange(ExpandableBioCollapsedHeightPreferenceKey.self) { newValue in
+            if abs(collapsedHeight - newValue) > 0.5 {
+                collapsedHeight = newValue
+            }
+        }
+        .onPreferenceChange(ExpandableBioFullHeightPreferenceKey.self) { newValue in
+            if abs(fullHeight - newValue) > 0.5 {
+                fullHeight = newValue
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func bioContent(showToggle: Bool) -> some View {
+        VStack(alignment: .leading, spacing: SpaceTokens.spaceXs) {
+            Text(text)
+                .font(.bodyLg)
+                .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
+                .lineLimit(showToggle && !isExpanded ? lineLimit : nil)
+                .padding(.horizontal, SpaceTokens.spaceSm)
+
+            if showToggle {
+                Text(isExpanded ? Strings.seerrShowLess : Strings.seerrShowMore)
+                    .font(.captionXs)
+                    .foregroundColor(isFocused ? theme.colorScheme.onButtonFocused.opacity(0.7) : theme.accent)
+                    .padding(.horizontal, SpaceTokens.spaceSm)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, SpaceTokens.spaceSm)
+        .background(
+            RoundedRectangle(cornerRadius: RadiusTokens.small)
+                .fill((showToggle && isFocused) ? theme.colorScheme.buttonFocused.opacity(0.08) : Color.clear)
+        )
+    }
+
+    private var measurementLayer: some View {
+        VStack(spacing: 0) {
+            Text(text)
+                .font(.bodyLg)
+                .lineLimit(lineLimit)
+                .frame(width: textWidth, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: ExpandableBioCollapsedHeightPreferenceKey.self, value: proxy.size.height)
+                    }
+                )
+
+            Text(text)
+                .font(.bodyLg)
+                .lineLimit(nil)
+                .frame(width: textWidth, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: ExpandableBioFullHeightPreferenceKey.self, value: proxy.size.height)
+                    }
+                )
+        }
+        .hidden()
     }
 }

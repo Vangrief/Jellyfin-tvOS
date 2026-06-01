@@ -10,7 +10,6 @@ struct SettingsScreenLayout<Content: View>: View {
     }
 
     @EnvironmentObject var theme: MoonfinTheme
-    @EnvironmentObject var settingsRouter: SettingsRouter
 
     var body: some View {
         ScrollView {
@@ -26,9 +25,6 @@ struct SettingsScreenLayout<Content: View>: View {
             }
             .padding(.horizontal, SpaceTokens.spaceSm)
             .padding(.bottom, SpaceTokens.spaceLg)
-        }
-        .onExitCommand {
-            settingsRouter.goBack()
         }
     }
 }

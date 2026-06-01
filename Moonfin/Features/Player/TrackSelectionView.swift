@@ -4,6 +4,7 @@ enum TrackSelectionTab: String {
     case audio = "Audio"
     case subtitles = "Subtitles"
     case speed = "Speed"
+    case quality = "Quality"
 }
 
 // MARK: - Dialog Shell
@@ -76,16 +77,28 @@ struct PlayerSubtitleTrackDialog: View {
                 label: Strings.none,
                 detail: nil,
                 isSelected: viewModel.player.currentSubtitleTrackIndex == -1,
-                action: { viewModel.player.disableSubtitles() }
+                action: { viewModel.playbackManager.disableSubtitles() }
             )
 
-            ForEach(viewModel.player.subtitleTracks) { track in
-                FocusableTrackSelectorRow(
-                    label: track.name,
-                    detail: nil,
-                    isSelected: track.id == viewModel.player.currentSubtitleTrackIndex,
-                    action: { viewModel.playbackManager.setSubtitleTrack(track.id) }
-                )
+            if viewModel.usesServerSubtitleStreams {
+                ForEach(viewModel.serverSubtitleStreams, id: \.index) { stream in
+                    FocusableTrackSelectorRow(
+                        label: viewModel.subtitleLabel(for: stream),
+                        detail: viewModel.subtitleDetail(for: stream),
+                        isSelected: stream.index == viewModel.activeServerSubtitleStreamIndex
+                            && viewModel.player.currentSubtitleTrackIndex != -1,
+                        action: { viewModel.selectSubtitle(serverStream: stream) }
+                    )
+                }
+            } else {
+                ForEach(viewModel.player.subtitleTracks) { track in
+                    FocusableTrackSelectorRow(
+                        label: track.name,
+                        detail: nil,
+                        isSelected: track.id == viewModel.player.currentSubtitleTrackIndex,
+                        action: { viewModel.playbackManager.setSubtitleTrack(track.id) }
+                    )
+                }
             }
 
             Divider().background(Color.white.opacity(0.2))
@@ -168,5 +181,24 @@ struct PlayerSpeedDialog: View {
         if speed == 1.0 { return Strings.playerSpeedNormal }
         if speed == floor(speed) { return "\(Int(speed))x" }
         return String(format: "%gx", speed)
+    }
+}
+
+// MARK: - Quality Dialog
+
+struct PlayerQualityDialog: View {
+    @ObservedObject var viewModel: VideoPlayerViewModel
+
+    var body: some View {
+        PlayerDialogShell(title: Strings.maxBitrate, onDismiss: { viewModel.hideTrackSelection() }) {
+            ForEach(viewModel.maxBitrateOptions, id: \.0) { value, label in
+                FocusableTrackSelectorRow(
+                    label: label,
+                    detail: nil,
+                    isSelected: viewModel.selectedMaxBitrate == value,
+                    action: { viewModel.setMaxBitrate(value) }
+                )
+            }
+        }
     }
 }

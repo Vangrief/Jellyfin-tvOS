@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsMediaBarOpacityScreen: View {
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var settingsRouter: SettingsRouter
     @EnvironmentObject var theme: MoonfinTheme
 
     private var currentOpacity: Int {
@@ -12,11 +11,10 @@ struct SettingsMediaBarOpacityScreen: View {
     private let options = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
     var body: some View {
-        SettingsScreenLayout(title: "Overlay Opacity") {
+        SettingsScreenLayout(title: Strings.settingsMediaBarOpacityScreenTitle) {
             ForEach(options, id: \.self) { value in
                 Button {
                     container.userPreferences[UserPreferences.mediaBarOverlayOpacity] = value
-                    settingsRouter.goBack()
                 } label: {
                     OpacityOptionContent(
                         value: value,

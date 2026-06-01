@@ -1,9 +1,27 @@
 import SwiftUI
 
+enum SimpleInfoRowSizeVariant {
+    case regular
+    case compact
+    case small
+}
+
 struct SimpleInfoRow: View {
     let item: ServerItem?
     var metadataSummary: String?
+    var sizeVariant: SimpleInfoRowSizeVariant = .regular
     @EnvironmentObject var theme: MoonfinTheme
+
+    private var rowFont: Font {
+        switch sizeVariant {
+        case .regular:
+            return .bodyLg
+        case .compact:
+            return .bodyMd
+        case .small:
+            return .bodySm
+        }
+    }
 
     var body: some View {
         if let item {
@@ -20,8 +38,8 @@ struct SimpleInfoRow: View {
 
     private var separator: some View {
         Text("•")
-            .font(.bodyLg)
-            .foregroundColor(theme.colorScheme.onBackground.opacity(0.5))
+            .font(rowFont)
+            .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor.opacity(0.8) : theme.colorScheme.onBackground.opacity(0.5))
     }
 
     private func metadataParts(for item: ServerItem) -> [AnyView] {
@@ -59,7 +77,7 @@ struct SimpleInfoRow: View {
         }
 
         if let count = item.songCount ?? item.childCount, count > 0 {
-            parts.append(infoText("\(count) track\(count == 1 ? "" : "s")"))
+            parts.append(infoText(count == 1 ? Strings.simpleInfoRowTrackCountSingular(count) : Strings.simpleInfoRowTrackCountPlural(count)))
         }
 
         if let genres = item.genres, !genres.isEmpty {
@@ -127,21 +145,21 @@ struct SimpleInfoRow: View {
     private func infoText(_ text: String) -> AnyView {
         AnyView(
             Text(text)
-                .font(.bodyLg)
-                .foregroundColor(theme.colorScheme.onBackground.opacity(0.7))
+                .font(rowFont)
+                .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.7))
         )
     }
 
     private func ratingBadge(_ rating: String) -> AnyView {
         AnyView(
             Text(rating)
-                .font(.bodyLg)
-                .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
+                .font(rowFont)
+                .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.8))
                 .padding(.horizontal, SpaceTokens.spaceSm)
                 .padding(.vertical, 2)
                 .overlay(
                     RoundedRectangle(cornerRadius: RadiusTokens.extraSmall)
-                        .stroke(theme.colorScheme.onBackground.opacity(0.3), lineWidth: 1)
+                        .stroke(theme.isNeonPulseTheme ? theme.neonPrimaryColor.opacity(0.85) : theme.colorScheme.onBackground.opacity(0.3), lineWidth: 1)
                 )
         )
     }
@@ -149,14 +167,14 @@ struct SimpleInfoRow: View {
     private func resolutionBadge(_ resolution: String) -> AnyView {
         AnyView(
             Text(resolution)
-                .font(.bodyLg)
+                .font(rowFont)
                 .fontWeight(.semibold)
-                .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
+                .foregroundColor(theme.isNeonPulseTheme ? theme.neonSecondaryColor : theme.colorScheme.onBackground.opacity(0.8))
                 .padding(.horizontal, SpaceTokens.spaceSm)
                 .padding(.vertical, 2)
                 .overlay(
                     RoundedRectangle(cornerRadius: RadiusTokens.extraSmall)
-                        .stroke(theme.colorScheme.onBackground.opacity(0.3), lineWidth: 1)
+                        .stroke(theme.isNeonPulseTheme ? theme.neonPrimaryColor.opacity(0.85) : theme.colorScheme.onBackground.opacity(0.3), lineWidth: 1)
                 )
         )
     }

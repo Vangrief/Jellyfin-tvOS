@@ -66,7 +66,7 @@ final class ScreensaverViewModel: ObservableObject {
                     }
                 }
         } else {
-            startLibraryShowcase()
+            content = .logo
         }
     }
 

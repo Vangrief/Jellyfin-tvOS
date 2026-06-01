@@ -27,10 +27,34 @@ struct RootView: View {
                         removal: .identity
                     ))
             }
+
+            if sessionInitializer.isSwitchUserTransitionActive {
+                SwitchUserTransitionOverlay()
+                    .zIndex(10)
+            }
         }
         .animation(.easeInOut(duration: 0.5), value: router.flow)
         .onAppear {
             sessionInitializer.initialize(router: router)
+        }
+    }
+}
+
+private struct SwitchUserTransitionOverlay: View {
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.78)
+                .ignoresSafeArea()
+
+            VStack(spacing: SpaceTokens.spaceMd) {
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.2)
+
+                Text(Strings.switchUser)
+                    .font(.titleMd)
+                    .foregroundColor(.white.opacity(0.9))
+            }
         }
     }
 }
@@ -69,7 +93,17 @@ struct StartupNavigationView: View {
         case .embyConnect:
             EmbyConnectScreen(container: container)
         case .serverUsers(let serverId):
-            ServerScreen(serverId: serverId, container: container, suppressAutoLogin: sessionInitializer.consumeSuppressAutoLogin())
+            let suppressAutoLogin = sessionInitializer.suppressAutoLogin
+            let preferredUserId = sessionInitializer.restoredUserId
+            ServerScreen(
+                serverId: serverId,
+                container: container,
+                suppressAutoLogin: suppressAutoLogin,
+                preferredUserId: preferredUserId
+            )
+            .onAppear {
+                sessionInitializer.clearStartupSelectionContext()
+            }
         case .userLogin(let serverId, let username):
             UserLoginScreen(serverId: serverId, username: username, container: container)
         case .connectHelp:
@@ -78,6 +112,11 @@ struct StartupNavigationView: View {
             PlaceholderView(title: "Screen")
         }
     }
+}
+
+private struct AdminMessagePayload: Equatable {
+    let title: String
+    let message: String
 }
 
 struct MainNavigationView: View {
@@ -96,8 +135,9 @@ struct MainNavigationView: View {
     @State private var preferContentFocusDuringHandoff = false
     @State private var isCurrentDestinationDetails = false
     @State private var contentHandoffResetTask: Task<Void, Never>?
+    @State private var sidebarFocusRequestToken = 0
     @State private var showExitConfirmation = false
-    @State private var hasPlaybackScreensaverLock = false
+    @State private var adminMessage: AdminMessagePayload?
 
     private var navbarPosition: NavbarPosition {
         container.userPreferences[UserPreferences.navbarPosition]
@@ -167,16 +207,20 @@ struct MainNavigationView: View {
         navbarHomeFocusToken += 1
     }
 
+    private func requestSidebarFocus() {
+        sidebarFocusRequestToken += 1
+    }
+
     var body: some View {
         ZStack {
             mainContent
                 .focusSection()
                 .prefersDefaultFocus(contentShouldPreferDefaultFocus, in: mainNamespace)
-                .disabled(settingsRouter.isPresented || container.inactivityTracker.isScreensaverVisible || showExitConfirmation)
+                .disabled(settingsRouter.isPresented || container.inactivityTracker.isScreensaverVisible || showExitConfirmation || adminMessage != nil)
 
             navigationOverlay
                 .opacity(container.inactivityTracker.isScreensaverVisible ? 0 : 1)
-                .disabled(settingsRouter.isPresented || container.inactivityTracker.isScreensaverVisible || showExitConfirmation)
+                .disabled(settingsRouter.isPresented || container.inactivityTracker.isScreensaverVisible || showExitConfirmation || adminMessage != nil)
 
             clockOverlay
 
@@ -194,11 +238,13 @@ struct MainNavigationView: View {
                 theme.colorScheme.scrim
                     .ignoresSafeArea()
                     .transition(.opacity)
+                    .zIndex(10)
 
                 SettingsOverlayView(focusNamespace: settingsNamespace)
                     .ignoresSafeArea()
                     .transition(.move(edge: .trailing))
                     .prefersDefaultFocus(in: mainNamespace)
+                    .zIndex(11)
             }
 
             if container.inactivityTracker.isScreensaverVisible {
@@ -220,6 +266,20 @@ struct MainNavigationView: View {
                     onDismiss: { showExitConfirmation = false }
                 )
                 .zIndex(2)
+            }
+
+            if let adminMessagePayload = adminMessage {
+                theme.colorScheme.scrim
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .zIndex(3)
+
+                AdminMessageDialog(
+                    title: adminMessagePayload.title,
+                    message: adminMessagePayload.message,
+                    onDismiss: { adminMessage = nil }
+                )
+                .zIndex(4)
             }
         }
         .ignoresSafeArea()
@@ -252,16 +312,28 @@ struct MainNavigationView: View {
         }
         .onDisappear {
             contentHandoffResetTask?.cancel()
-            if hasPlaybackScreensaverLock {
-                hasPlaybackScreensaverLock = false
-                container.inactivityTracker.removeLock()
-            }
+            container.pluginSyncService.onAdminMessage = nil
+            container.syncPlayRuntimeCoordinator.onDisplayMessage = nil
         }
         .onAppear {
-            syncPlaybackScreensaverLock(router.isPlaybackActive)
+            container.pluginSyncService.onAdminMessage = { text in
+                adminMessage = AdminMessagePayload(title: Strings.rootViewServerMessage, message: text)
+            }
+
+            container.syncPlayRuntimeCoordinator.onDisplayMessage = { header, text in
+                let trimmedMessage = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmedMessage.isEmpty else { return }
+
+                let trimmedHeader = header?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let title = (trimmedHeader?.isEmpty == false ? trimmedHeader : nil) ?? Strings.rootViewServerMessage
+                adminMessage = AdminMessagePayload(title: title, message: trimmedMessage)
+            }
+
+            if router.isPlaybackActive {
+                container.inactivityTracker.notifyInteraction()
+            }
         }
         .onChange(of: router.isPlaybackActive) { isActive in
-            syncPlaybackScreensaverLock(isActive)
             if isActive {
                 container.inactivityTracker.notifyInteraction()
             }
@@ -282,6 +354,11 @@ struct MainNavigationView: View {
             }
         }
         .onExitCommand {
+            if adminMessage != nil {
+                adminMessage = nil
+                return
+            }
+
             if showExitConfirmation {
                 showExitConfirmation = false
                 return
@@ -292,25 +369,16 @@ struct MainNavigationView: View {
                   router.path.isEmpty else { return }
 
             container.inactivityTracker.notifyInteraction()
-            showExitConfirmation = true
+            if container.userPreferences[UserPreferences.confirmExit] {
+                showExitConfirmation = true
+            } else {
+                closeApp()
+            }
         }
     }
 
     private func closeApp() {
         exit(0)
-    }
-
-    private func syncPlaybackScreensaverLock(_ isPlaybackActive: Bool) {
-        if isPlaybackActive {
-            guard !hasPlaybackScreensaverLock else { return }
-            hasPlaybackScreensaverLock = true
-            container.inactivityTracker.addLock()
-            return
-        }
-
-        guard hasPlaybackScreensaverLock else { return }
-        hasPlaybackScreensaverLock = false
-        container.inactivityTracker.removeLock()
     }
 
     private var mainContent: some View {
@@ -356,7 +424,8 @@ struct MainNavigationView: View {
                 LeftSidebar(
                     container: container,
                     onMoveToContent: handoffSidebarFocusToContent,
-                    onSidebarEntered: noteSidebarEntered
+                    onSidebarEntered: noteSidebarEntered,
+                    requestFocusToken: sidebarFocusRequestToken
                 )
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .ignoresSafeArea()
@@ -447,7 +516,8 @@ struct MainNavigationView: View {
                 serverId: serverId,
                 autoPlay: autoPlay,
                 sidebarEntryToken: sidebarEntryToken,
-                sidebarHandoffToken: sidebarHandoffToken
+                sidebarHandoffToken: sidebarHandoffToken,
+                onMoveToSidebar: requestSidebarFocus
             )
             .onAppear { isCurrentDestinationDetails = true }
             .onDisappear { isCurrentDestinationDetails = false }
@@ -478,9 +548,18 @@ struct MainNavigationView: View {
         case .liveTvPlayer(let channelId):
             liveTvPlayerDestination(channelId: channelId)
         case .seerrDiscover:
-            SeerrDiscoverView(seerrRepository: container.seerrRepository)
+            SeerrDiscoverView(
+                seerrRepository: container.seerrRepository,
+                sidebarEntryToken: sidebarEntryToken,
+                sidebarHandoffToken: sidebarHandoffToken
+            )
         case .seerrMediaDetails(let itemJson):
-            SeerrMediaDetailsView(itemJson: itemJson, seerrRepository: container.seerrRepository)
+            SeerrMediaDetailsView(
+                itemJson: itemJson,
+                seerrRepository: container.seerrRepository,
+                sidebarEntryToken: sidebarEntryToken,
+                sidebarHandoffToken: sidebarHandoffToken
+            )
         case .seerrPersonDetails(let personId):
             SeerrPersonDetailsView(personId: personId, seerrRepository: container.seerrRepository)
         case .seerrBrowseBy(let filterId, let filterName, let mediaType, let filterType):
@@ -597,6 +676,48 @@ private struct ExitConfirmationDialog: View {
         .onAppear {
             DispatchQueue.main.async {
                 focusedTarget = .cancel
+            }
+        }
+        .onExitCommand(perform: onDismiss)
+    }
+}
+
+private struct AdminMessageDialog: View {
+    let title: String
+    let message: String
+    let onDismiss: () -> Void
+
+    @EnvironmentObject var theme: MoonfinTheme
+    @FocusState private var focusedButton: Bool
+
+    var body: some View {
+        VStack(spacing: SpaceTokens.spaceLg) {
+            Image(systemName: "megaphone.fill")
+                .font(.system(size: 40))
+                .foregroundColor(theme.accent)
+
+            Text(title)
+                .font(.titleMd)
+                .foregroundColor(theme.colorScheme.onBackground)
+
+            Text(message)
+                .font(.bodyMd)
+                .foregroundColor(theme.colorScheme.onBackground.opacity(0.8))
+                .multilineTextAlignment(.center)
+
+            FocusableDialogButton(title: Strings.ok, action: onDismiss)
+                .focused($focusedButton)
+        }
+        .padding(SpaceTokens.spaceXl)
+        .background(
+            RoundedRectangle(cornerRadius: RadiusTokens.large)
+                .fill(theme.colorScheme.surface)
+        )
+        .frame(maxWidth: 560)
+        .focusSection()
+        .onAppear {
+            DispatchQueue.main.async {
+                focusedButton = true
             }
         }
         .onExitCommand(perform: onDismiss)

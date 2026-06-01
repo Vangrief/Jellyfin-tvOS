@@ -46,7 +46,7 @@ struct ErrorBannerView: View {
                 .buttonStyle(CleanButtonStyle())
             }
         }
-        .foregroundColor(.white)
+        .foregroundColor(theme.colorScheme.onBackground)
         .padding(.horizontal, SpaceTokens.spaceMd)
         .padding(.vertical, SpaceTokens.spaceSm)
         .background(
@@ -140,7 +140,7 @@ struct NetworkRetryDialog: View {
         VStack(spacing: SpaceTokens.spaceLg) {
             Image(systemName: dialogIcon)
                 .font(.system(size: 40))
-                .foregroundColor(.orange)
+                .foregroundColor(theme.colorScheme.statusPending)
 
             Text(dialogTitle)
                 .font(.titleMd)
@@ -189,6 +189,8 @@ struct InlineErrorView: View {
     let message: String
     var compact: Bool = false
 
+    @EnvironmentObject var theme: MoonfinTheme
+
     var body: some View {
         HStack(spacing: SpaceTokens.spaceXs) {
             Image(systemName: "exclamationmark.circle")
@@ -197,7 +199,7 @@ struct InlineErrorView: View {
                 .font(compact ? .captionSm : .bodySm)
                 .lineLimit(compact ? 1 : 3)
         }
-        .foregroundColor(.red.opacity(0.9))
+        .foregroundColor(theme.colorScheme.recording.opacity(0.9))
     }
 }
 
@@ -206,11 +208,13 @@ struct ErrorOverlayModifier: ViewModifier {
     let onRetry: () -> Void
     let onDismiss: () -> Void
 
+    @EnvironmentObject var theme: MoonfinTheme
+
     func body(content: Content) -> some View {
         content.overlay {
             if let error {
                 ZStack {
-                    Color.black.opacity(0.6)
+                    theme.colorScheme.scrim.opacity(0.6)
                         .ignoresSafeArea()
                     NetworkRetryDialog(
                         error: error,

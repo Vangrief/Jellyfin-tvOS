@@ -107,6 +107,7 @@ struct EmbyItemsApi: ServerItemsApi {
             ("PersonIds", request.personIds?.joined(separator: ",")),
             ("StudioIds", request.studioIds?.joined(separator: ",")),
             ("Genres", request.genres?.joined(separator: ",")),
+            ("GenreIds", request.genreIds?.joined(separator: ",")),
             ("Tags", request.tags?.joined(separator: ",")),
             ("Years", request.years?.map(String.init).joined(separator: ",")),
             ("Ids", request.ids?.joined(separator: ",")),
@@ -173,12 +174,14 @@ struct EmbyItemsApi: ServerItemsApi {
     }
 
     func getLatestMedia(request: GetLatestMediaRequest) async throws -> [ServerItem] {
+        let groupItems: Bool? = request.includeItemTypes == [.series] ? true : request.groupItems
+
         let query = buildQuery([
             ("ParentId", request.parentId),
             ("Fields", request.fields?.map(\.rawValue).joined(separator: ",")),
             ("IncludeItemTypes", request.includeItemTypes?.map(\.apiValue).joined(separator: ",")),
             ("Limit", request.limit.map(String.init)),
-            ("GroupItems", request.groupItems.map(String.init)),
+            ("GroupItems", groupItems.map(String.init)),
             ("ImageTypeLimit", request.imageTypeLimit.map(String.init)),
         ])
 
@@ -219,16 +222,22 @@ struct EmbyItemsApi: ServerItemsApi {
         throw lastError ?? ServerError.invalidResponse
     }
 
-    func getSimilarItems(itemId: String, limit: Int?) async throws -> ItemsResult {
+    func getSimilarItems(itemId: String, limit: Int?, fields: [ItemField]? = nil) async throws -> ItemsResult {
         let query = buildQuery([
             ("UserId", client.userId),
             ("Limit", limit.map(String.init)),
+            ("Fields", fields?.map(\.rawValue).joined(separator: ",")),
+            ("EnableTotalRecordCount", "false"),
         ])
         return try await client.request("/Items/\(itemId)/Similar", queryItems: query)
     }
 
-    func getSeasons(seriesId: String, userId: String) async throws -> ItemsResult {
-        let query = buildQuery([("UserId", userId)])
+    func getSeasons(seriesId: String, userId: String, fields: [ItemField]? = nil) async throws -> ItemsResult {
+        let query = buildQuery([
+            ("UserId", userId),
+            ("Fields", fields?.map(\.rawValue).joined(separator: ",")),
+            ("EnableTotalRecordCount", "false"),
+        ])
         return try await client.request("/Shows/\(seriesId)/Seasons", queryItems: query)
     }
 

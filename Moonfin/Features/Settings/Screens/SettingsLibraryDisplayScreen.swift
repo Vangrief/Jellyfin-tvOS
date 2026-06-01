@@ -18,11 +18,11 @@ struct SettingsLibraryDisplayScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "Display Settings") {
+        SettingsScreenLayout(title: Strings.displaySettings) {
             SettingsToggleButton(
                 icon: "eye.slash",
-                heading: "Hide from Home",
-                caption: "Exclude this library from the home screen navbar",
+                heading: Strings.settingsLibraryDisplayScreenHideFromHome,
+                caption: Strings.settingsLibraryDisplayScreenHideFromHomeCaption,
                 isOn: Binding(
                     get: { isHiddenFromNavbar },
                     set: { newValue in
@@ -33,8 +33,8 @@ struct SettingsLibraryDisplayScreen: View {
             )
             SettingsListButton(
                 icon: "rectangle.expand.vertical",
-                heading: "Image Size",
-                caption: "Size of cards in the grid",
+                heading: Strings.settingsLibraryDisplayScreenImageSize,
+                caption: Strings.settingsLibraryDisplayScreenImageSizeCaption,
                 trailingText: prefs.posterSize.displayName,
                 action: {
                     settingsRouter.navigate(to: .librariesDisplayImageSize(
@@ -54,8 +54,8 @@ struct SettingsLibraryDisplayScreen: View {
 
             SettingsListButton(
                 icon: "photo",
-                heading: "Image Type",
-                caption: "Type of image shown on cards",
+                heading: Strings.settingsImageType,
+                caption: Strings.settingsLibraryDisplayScreenImageTypeCaption,
                 trailingText: prefs.imageType.displayName,
                 action: {
                     settingsRouter.navigate(to: .librariesDisplayImageType(
@@ -75,8 +75,8 @@ struct SettingsLibraryDisplayScreen: View {
 
             SettingsListButton(
                 icon: "arrow.up.arrow.down",
-                heading: "Grid Direction",
-                caption: "Scroll orientation for the grid",
+                heading: Strings.settingsLibraryDisplayScreenGridDirection,
+                caption: Strings.settingsLibraryDisplayScreenGridDirectionCaption,
                 trailingText: prefs.gridDirection.displayName,
                 action: {
                     settingsRouter.navigate(to: .librariesDisplayGrid(

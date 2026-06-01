@@ -19,19 +19,19 @@ struct SettingsAuthPinCodeScreen: View {
     }
 
     var body: some View {
-        SettingsScreenLayout(title: "PIN Code") {
+        SettingsScreenLayout(title: Strings.settingsAuthPinCodeScreenPinCode) {
             if hasPinSet {
                 SettingsToggleButton(
                     icon: "lock.shield",
-                    heading: "PIN Code Enabled",
-                    caption: "Require PIN to access the app",
+                    heading: Strings.settingsAuthPinCodeScreenPinCodeEnabled,
+                    caption: Strings.settingsAuthPinCodeScreenRequirePin,
                     isOn: prefs.binding(for: UserPreferences.userPinEnabled)
                 )
 
                 Button(action: { startFlow(.changeVerify) }) {
                     HStack {
                         Image(systemName: "arrow.triangle.2.circlepath")
-                        Text("Change PIN")
+                        Text(Strings.settingsAuthPinCodeScreenChangePin)
                     }
                     .font(.bodyMd)
                     .foregroundColor(theme.accent)
@@ -43,7 +43,7 @@ struct SettingsAuthPinCodeScreen: View {
                 Button(action: { startFlow(.removeVerify) }) {
                     HStack {
                         Image(systemName: "trash")
-                        Text("Remove PIN")
+                        Text(Strings.settingsAuthPinCodeScreenRemovePin)
                     }
                     .font(.bodyMd)
                     .foregroundColor(.red)
@@ -52,7 +52,7 @@ struct SettingsAuthPinCodeScreen: View {
                 }
                 .buttonStyle(CleanButtonStyle())
             } else {
-                Text("No PIN is currently set. Set a PIN to protect access to the app.")
+                Text(Strings.settingsAuthPinCodeScreenNoPinSet)
                     .font(.bodyMd)
                     .foregroundColor(theme.colorScheme.listCaption)
                     .padding(.bottom, SpaceTokens.spaceSm)
@@ -60,7 +60,7 @@ struct SettingsAuthPinCodeScreen: View {
                 Button(action: { startFlow(.set) }) {
                     HStack {
                         Image(systemName: "lock.fill")
-                        Text("Set PIN")
+                        Text(Strings.settingsAuthPinCodeScreenSetPin)
                     }
                     .font(.bodyMd)
                     .foregroundColor(theme.accent)

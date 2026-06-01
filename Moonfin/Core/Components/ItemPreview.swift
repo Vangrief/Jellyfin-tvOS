@@ -4,18 +4,27 @@ struct ItemPreview: View {
     let item: ServerItem
     let imageUrl: String?
     var aspectRatio: CGFloat = 2.0 / 3.0
-    var cardWidth: CGFloat = 150
+    var cardWidth: CGFloat = 180
     var shape: CardShape = .rounded
     var watchedIndicator: WatchedIndicatorBehavior = .always
     var serverName: String?
+    var focusScale: CGFloat = 1.05
     var showLabels: Bool = true
     var onFocused: ((ServerItem) -> Void)?
+    var onFocusChange: ((Bool) -> Void)?
     var onSelect: (() -> Void)?
     var onToggleWatched: (() -> Void)?
     var onToggleFavorite: (() -> Void)?
 
     @EnvironmentObject var theme: MoonfinTheme
     @State private var isCardFocused = false
+
+    private var safeCardWidth: CGFloat {
+        if cardWidth.isFinite, cardWidth > 1 {
+            return cardWidth
+        }
+        return 1
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: SpaceTokens.spaceSm) {
@@ -27,9 +36,13 @@ struct ItemPreview: View {
                 shape: shape,
                 watchedIndicator: watchedIndicator,
                 serverName: serverName,
+                focusScale: focusScale,
                 onFocused: onFocused,
                 onSelect: onSelect,
-                onFocusChange: { isCardFocused = $0 },
+                onFocusChange: { focused in
+                    isCardFocused = focused
+                    onFocusChange?(focused)
+                },
                 onToggleWatched: onToggleWatched,
                 onToggleFavorite: onToggleFavorite
             )
@@ -40,8 +53,8 @@ struct ItemPreview: View {
                         text: item.name,
                         font: .captionXs,
                         fontSize: TypographyTokens.fontSizeXs,
-                        color: theme.colorScheme.onBackground,
-                        maxWidth: cardWidth,
+                        color: theme.colorScheme.listHeadline,
+                        maxWidth: safeCardWidth,
                         isFocused: isCardFocused
                     )
 
@@ -50,13 +63,13 @@ struct ItemPreview: View {
                             text: item.cardSubtitle,
                             font: .captionXs,
                             fontSize: TypographyTokens.fontSizeXs,
-                            color: theme.colorScheme.onBackground.opacity(0.6),
-                            maxWidth: cardWidth,
+                            color: theme.colorScheme.listCaption,
+                            maxWidth: safeCardWidth,
                             isFocused: isCardFocused
                         )
                     }
                 }
-                .frame(width: cardWidth, alignment: .leading)
+                .frame(width: safeCardWidth, alignment: .leading)
             }
         }
     }

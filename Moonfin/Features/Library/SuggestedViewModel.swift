@@ -56,8 +56,11 @@ final class SuggestedViewModel: ObservableObject {
 
     func subtitle(for item: ServerItem) -> String {
         var parts: [String] = []
+        let enabledSourcesOrdered = RatingSource.canonicalEnabledSourceOrder(container.userPreferences[UserPreferences.enabledRatings])
         if let year = item.productionYear { parts.append(String(year)) }
-        if let rating = item.communityRating {
+        if RatingSource.isSourceEnabled(RatingSource.communityRawValue, enabledSourcesOrdered: enabledSourcesOrdered),
+           let rating = item.communityRating,
+           rating > 0 {
             parts.append(String(format: "%.1f", rating))
         }
         return parts.joined(separator: " · ")
@@ -87,7 +90,7 @@ final class SuggestedViewModel: ObservableObject {
                 for (index, movie) in recentMovies.enumerated() {
                     group.addTask {
                         let similarResult = try? await client.itemsApi.getSimilarItems(
-                            itemId: movie.id, limit: 7
+                            itemId: movie.id, limit: 7, fields: nil
                         )
                         guard let similar = similarResult?.items, !similar.isEmpty else { return (index, nil) }
                         return (index, SuggestionRow(id: movie.id, sourceItem: movie, items: similar))
